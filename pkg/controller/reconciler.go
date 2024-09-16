@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"stagger/pkg/controller/types"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -12,9 +11,8 @@ import (
 // Continuously monitor pod changes and make sure that pacers
 // are updated.
 type Reconciler struct {
-	client          client.Client
-	classifier      *podClassifier
-	recorderFactory types.ObjectRecorderFactory
+	client     client.Client
+	classifier *podClassifier
 }
 
 var _ reconcile.Reconciler = &Reconciler{}

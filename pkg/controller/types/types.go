@@ -13,6 +13,7 @@ import (
 )
 
 //go:generate mockgen -package mocks -destination ../mocks/blockers.go -source $GOFILE
+//go:generate mockgen -package mocks -destination ../mocks/client.go sigs.k8s.io/controller-runtime/pkg/client Client
 
 type ObjectRecorder interface {
 	Normalf(reason, format string, args ...interface{})
@@ -39,6 +40,11 @@ type PodClassifier interface {
 	// Classify a pod to a staggering group. If pod does not belong to any group
 	// nil is returned.
 	Classify(podMeta metav1.ObjectMeta, podSpec corev1.PodSpec, logger logr.Logger) (*PodClassification, error)
+}
+
+// Interface to provide classification of all pods within a staggering group.
+type PodGroupStandingClassifier interface {
+	ClassifyPodGroup(ctx context.Context, groupID string, logger logr.Logger) (ready, starting, blocked []corev1.Pod, err error)
 }
 
 // Configuration interface for a pod classifier.

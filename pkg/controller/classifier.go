@@ -155,10 +155,11 @@ func (c *podClassifier) Classify(podMeta metav1.ObjectMeta, podSpec corev1.PodSp
 		}
 
 		if len(configs) > 0 {
+			id := uuid.New().String()
 			group = &groupEntry{
-				id:             uuid.New().String(),
+				id:             id,
 				configs:        configs,
-				compositePacer: pacer.NewComposite(group.id, pacers),
+				compositePacer: pacer.NewComposite(id, pacers),
 			}
 			c.groupsByID.Set(group.id, group, 0)
 		}

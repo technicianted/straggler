@@ -103,7 +103,8 @@ func TestClassifierSkipSelector(t *testing.T) {
 
 	classifier := NewPodClassifier()
 	err := classifier.AddConfig(types.StaggerGroup{
-		LabelSelector: map[string]string{"key": "value"},
+		LabelSelector:      map[string]string{"key": "value"},
+		GroupingExpression: ".metadata.name",
 	}, logger)
 	require.NoError(t, err)
 

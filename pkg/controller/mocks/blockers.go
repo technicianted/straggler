@@ -172,10 +172,10 @@ func (m *MockPodClassifier) EXPECT() *MockPodClassifierMockRecorder {
 }
 
 // Classify mocks base method.
-func (m *MockPodClassifier) Classify(podMeta *v10.ObjectMeta, podSpec *v1.PodSpec, logger logr.Logger) (*types.StaggerGroup, error) {
+func (m *MockPodClassifier) Classify(podMeta v10.ObjectMeta, podSpec v1.PodSpec, logger logr.Logger) (*types0.PodClassification, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Classify", podMeta, podSpec, logger)
-	ret0, _ := ret[0].(*types.StaggerGroup)
+	ret0, _ := ret[0].(*types0.PodClassification)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -184,6 +184,46 @@ func (m *MockPodClassifier) Classify(podMeta *v10.ObjectMeta, podSpec *v1.PodSpe
 func (mr *MockPodClassifierMockRecorder) Classify(podMeta, podSpec, logger any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Classify", reflect.TypeOf((*MockPodClassifier)(nil).Classify), podMeta, podSpec, logger)
+}
+
+// MockPodGroupStandingClassifier is a mock of PodGroupStandingClassifier interface.
+type MockPodGroupStandingClassifier struct {
+	ctrl     *gomock.Controller
+	recorder *MockPodGroupStandingClassifierMockRecorder
+}
+
+// MockPodGroupStandingClassifierMockRecorder is the mock recorder for MockPodGroupStandingClassifier.
+type MockPodGroupStandingClassifierMockRecorder struct {
+	mock *MockPodGroupStandingClassifier
+}
+
+// NewMockPodGroupStandingClassifier creates a new mock instance.
+func NewMockPodGroupStandingClassifier(ctrl *gomock.Controller) *MockPodGroupStandingClassifier {
+	mock := &MockPodGroupStandingClassifier{ctrl: ctrl}
+	mock.recorder = &MockPodGroupStandingClassifierMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockPodGroupStandingClassifier) EXPECT() *MockPodGroupStandingClassifierMockRecorder {
+	return m.recorder
+}
+
+// ClassifyPodGroup mocks base method.
+func (m *MockPodGroupStandingClassifier) ClassifyPodGroup(ctx context.Context, groupID string, logger logr.Logger) ([]v1.Pod, []v1.Pod, []v1.Pod, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClassifyPodGroup", ctx, groupID, logger)
+	ret0, _ := ret[0].([]v1.Pod)
+	ret1, _ := ret[1].([]v1.Pod)
+	ret2, _ := ret[2].([]v1.Pod)
+	ret3, _ := ret[3].(error)
+	return ret0, ret1, ret2, ret3
+}
+
+// ClassifyPodGroup indicates an expected call of ClassifyPodGroup.
+func (mr *MockPodGroupStandingClassifierMockRecorder) ClassifyPodGroup(ctx, groupID, logger any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClassifyPodGroup", reflect.TypeOf((*MockPodGroupStandingClassifier)(nil).ClassifyPodGroup), ctx, groupID, logger)
 }
 
 // MockPodClassifierConfigurator is a mock of PodClassifierConfigurator interface.
