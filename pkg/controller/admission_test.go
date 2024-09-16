@@ -139,14 +139,27 @@ func TestAdmissionJobSimple(t *testing.T) {
 	blocker := blockermocks.NewMockPodBlocker(mockCtrl)
 
 	job := batchv1.Job{
-		ObjectMeta: v1.ObjectMeta{
-			Labels: map[string]string{
-				DefaultEnableLabel: "1",
+		Spec: batchv1.JobSpec{
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: v1.ObjectMeta{
+					Labels: map[string]string{
+						DefaultEnableLabel: "1",
+					},
+				},
 			},
 		},
 	}
 	admission := newAdmission(classifier, podGroupClassifier, recorderFactory, blocker, false)
 	err := admission.Default(context.Background(), &job)
 	require.NoError(t, err)
-	// check
+	// check if policy was added
+	require.NotNil(t, job.Spec.PodFailurePolicy)
+	require.Len(t, job.Spec.PodFailurePolicy.Rules, 1)
+
+	// skip adding if exists
+	err = admission.Default(context.Background(), &job)
+	require.NoError(t, err)
+	// should still be 1
+	require.NotNil(t, job.Spec.PodFailurePolicy)
+	require.Len(t, job.Spec.PodFailurePolicy.Rules, 1)
 }

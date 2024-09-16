@@ -149,23 +149,28 @@ func (a *Admission) handleJobAdmission(_ context.Context, job *batchv1.Job, logg
 
 	// first check if the policy is enabled
 	policyExists := false
-	for _, rule := range job.Spec.PodFailurePolicy.Rules {
-		if rule.Action != batchv1.PodFailurePolicyActionIgnore {
-			continue
-		}
-		for _, condition := range rule.OnPodConditions {
-			if condition.Status == corev1.ConditionTrue && condition.Type == corev1.DisruptionTarget {
-				policyExists = true
+	if job.Spec.PodFailurePolicy != nil {
+		for _, rule := range job.Spec.PodFailurePolicy.Rules {
+			if rule.Action != batchv1.PodFailurePolicyActionIgnore {
+				continue
+			}
+			for _, condition := range rule.OnPodConditions {
+				if condition.Status == corev1.ConditionTrue && condition.Type == corev1.DisruptionTarget {
+					policyExists = true
+					break
+				}
+			}
+			if policyExists {
 				break
 			}
-		}
-		if policyExists {
-			break
 		}
 	}
 	if !policyExists {
 		logger.Info("patching job to enable pod disruption ignoring")
 
+		if job.Spec.PodFailurePolicy == nil {
+			job.Spec.PodFailurePolicy = &batchv1.PodFailurePolicy{}
+		}
 		job.Spec.PodFailurePolicy.Rules = append(job.Spec.PodFailurePolicy.Rules, batchv1.PodFailurePolicyRule{
 			Action: metav1.FieldValidationIgnore,
 			OnPodConditions: []batchv1.PodFailurePolicyOnPodConditionsPattern{
