@@ -34,20 +34,24 @@ func TestCompositePacerSimple(t *testing.T) {
 	}
 	// both pacers allow first pod
 	pacer1 := mocks.NewMockPacer(mockCtrl)
-	pacer1.EXPECT().Pace(gomock.Any(), pendingPods, gomock.Any()).Return([]corev1.Pod{pendingPods[0]}, nil)
+	pacer1.EXPECT().Pace(gomock.Any(), gomock.Any()).Return([]corev1.Pod{pendingPods[0]}, nil)
 	pacer2 := mocks.NewMockPacer(mockCtrl)
-	pacer2.EXPECT().Pace(gomock.Any(), pendingPods, gomock.Any()).Return([]corev1.Pod{pendingPods[0]}, nil)
+	pacer2.EXPECT().Pace(gomock.Any(), gomock.Any()).Return([]corev1.Pod{pendingPods[0]}, nil)
 
 	composite := NewComposite(t.Name(), []types.Pacer{pacer1, pacer2})
-	allowedPods, err := composite.Pace([]corev1.Pod{}, pendingPods, logger)
+	allowedPods, err := composite.Pace(types.PodClassification{
+		NotAdmittedPods: pendingPods,
+	}, logger)
 	require.NoError(t, err)
 	require.Len(t, allowedPods, 1)
 	require.EqualValues(t, pendingPods[0:1], allowedPods)
 
 	// pacers allow different pods
-	pacer1.EXPECT().Pace(gomock.Any(), pendingPods, gomock.Any()).Return([]corev1.Pod{pendingPods[0]}, nil)
-	pacer2.EXPECT().Pace(gomock.Any(), pendingPods, gomock.Any()).Return([]corev1.Pod{pendingPods[1]}, nil)
-	allowedPods, err = composite.Pace([]corev1.Pod{}, pendingPods, logger)
+	pacer1.EXPECT().Pace(gomock.Any(), gomock.Any()).Return([]corev1.Pod{pendingPods[0]}, nil)
+	pacer2.EXPECT().Pace(gomock.Any(), gomock.Any()).Return([]corev1.Pod{pendingPods[1]}, nil)
+	allowedPods, err = composite.Pace(types.PodClassification{
+		NotAdmittedPods: pendingPods,
+	}, logger)
 	require.NoError(t, err)
 	require.Len(t, allowedPods, 0)
 }
