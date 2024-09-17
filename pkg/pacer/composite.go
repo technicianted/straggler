@@ -39,7 +39,7 @@ func (p *composite) Pace(podClassifications types.PodClassification, logger logr
 		}
 	}
 	// now find pods that were allowed len(pacers) times
-	for _, pod := range podClassifications.NotAdmittedPods {
+	for _, pod := range podClassifications.Blocked {
 		if count, ok := results[string(pod.UID)]; ok && count == len(p.pacers) {
 			allowPods = append(allowPods, pod)
 		}

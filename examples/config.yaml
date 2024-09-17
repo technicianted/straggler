@@ -1,0 +1,16 @@
+staggeringPolicies:
+# create a staggering policy to control image pulls.
+- name: image-pull
+  # only pods carrying this label will be considered.
+  labelSelector:
+    staggerimages: "1"
+  # stagger pods in groups by evaluating this jsonpath.
+  # in other words, pods with similar images are put in
+  # the same group.
+  groupingExpression: .spec.containers[0].image
+  pacer:
+    # use exponential pacer.
+    exponential:
+      minInitial: 4
+      maxStagger: 16
+      multiplier: 2

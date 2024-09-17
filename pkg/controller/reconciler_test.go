@@ -263,9 +263,9 @@ func TestReconcile_SuccessfulReconciliation(t *testing.T) {
 	mockPacer.
 		EXPECT().
 		Pace(pacertypes.PodClassification{
-			AdmittedAndReadyPods: readyPods,
-			AdmittedNotReadyPods: startingPods,
-			NotAdmittedPods:      blockedPods,
+			Ready:    readyPods,
+			Starting: startingPods,
+			Blocked:  blockedPods,
 		}, gomock.Any()).
 		Return([]corev1.Pod{
 			{ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "blocked-pod"}},

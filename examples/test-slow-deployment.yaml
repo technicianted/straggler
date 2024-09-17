@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slow-deployment
+  labels:
+    app: slow-deployment
+spec:
+  replicas: 32
+  selector:
+    matchLabels:
+      app: slow-deployment
+  template:
+    metadata:
+      labels:
+        app: slow-deployment
+        v1.stagger.technicianted/enable: "1"
+        staggerimages: "1"
+    spec:
+      containers:
+      - name: slow
+        image: ubuntu
+        command:
+        - sleep
+        - infinity
+        readinessProbe:
+          exec:
+            command:
+            - "true"
+          initialDelaySeconds: 20
+          successThreshold: 1
+  

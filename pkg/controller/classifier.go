@@ -103,7 +103,7 @@ func (c *podClassifier) UpdateConfig(config configtypes.StaggerGroup, logger log
 }
 
 func (c *podClassifier) Classify(podMeta metav1.ObjectMeta, podSpec corev1.PodSpec, logger logr.Logger) (*types.PodClassification, error) {
-	logger.V(10).Info("classifying pod", "podMeta", podMeta)
+	logger.V(10).Info("classifying pod", "name", podMeta.Name, "namespace", podMeta.Name, "uid", podMeta.UID)
 
 	c.Lock()
 	defer c.Unlock()

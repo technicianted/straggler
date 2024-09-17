@@ -1,0 +1,115 @@
+package cmd
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/go-logr/logr"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+)
+
+type CMD struct {
+	options Options
+
+	mgr                   manager.Manager
+	shutdownContext       context.Context
+	shutdownContextCancel context.CancelFunc
+	shutdownCompleteChan  chan struct{}
+}
+
+func NewCMD(options Options, logger logr.Logger) (*CMD, error) {
+	config, err := LoadConfig(options.StaggeringConfigPath, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load configs: %v", err)
+	}
+
+	kubernetesConfig, err := CreateKubernetesConfig(options.KubernetesOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kubernets config: %v", err)
+	}
+	options.Config = kubernetesConfig
+
+	mgr, err := NewControllerManager(options, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create controller manager: %v", err)
+	}
+
+	classifier, err := NewGroupClassifier(config.StaggeringPolicies, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	podGroupClassifier, err := NewPodgroupClassifier(mgr, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	recorderFactory, err := NewRecorderFactory(logger)
+	if err != nil {
+		return nil, err
+	}
+
+	matchPredicate, err := GetMatchLabelsPredicate(options, config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get match predicates for reconciler: %v", err)
+	}
+	if err := RegisterReconciler(
+		options,
+		matchPredicate,
+		mgr,
+		classifier,
+		podGroupClassifier,
+		logger,
+	); err != nil {
+		return nil, err
+	}
+	if err := RegisterAdmissionController(
+		options,
+		mgr,
+		classifier,
+		podGroupClassifier,
+		recorderFactory,
+		logger,
+	); err != nil {
+		return nil, err
+	}
+
+	return &CMD{
+		options: options,
+		mgr:     mgr,
+	}, nil
+}
+
+func (c *CMD) Start(logger logr.Logger) error {
+	logger.Info("starting")
+	c.shutdownCompleteChan = make(chan struct{})
+	c.shutdownContext, c.shutdownContextCancel = context.WithCancel(context.Background())
+	go func() {
+		err := c.mgr.Start(c.shutdownContext)
+		if err != nil {
+			logger.Info("failed to start controller manager", "error", err)
+		}
+		close(c.shutdownCompleteChan)
+	}()
+
+	logger.Info("waiting for caches to be ready")
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	if !c.mgr.GetCache().WaitForCacheSync(ctx) {
+		return fmt.Errorf("failed to sync caches: %v", ctx.Err())
+	}
+
+	return nil
+}
+
+func (c *CMD) Stop(logger logr.Logger) error {
+	logger.Info("shutting down")
+
+	c.shutdownContextCancel()
+	logger.Info("waiting for shutdown")
+	<-c.shutdownCompleteChan
+	logger.Info("shutdown completed")
+
+	return nil
+}

@@ -19,10 +19,10 @@ type podGroupStandingClassifier struct {
 	blocker    blocker.PodBlocker
 }
 
-func NewPodGroupStandingClassifier(client client.Client, blocker blocker.PodBlocker, groupLabel string) types.PodGroupStandingClassifier {
+func NewPodGroupStandingClassifier(client client.Client, blocker blocker.PodBlocker) types.PodGroupStandingClassifier {
 	return &podGroupStandingClassifier{
 		client:     client,
-		groupLabel: groupLabel,
+		groupLabel: DefaultStaggerGroupIDLabel,
 		blocker:    blocker,
 	}
 }

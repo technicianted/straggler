@@ -25,7 +25,7 @@ func newPodCondition(conditionType corev1.PodConditionType, status corev1.Condit
 }
 
 func TestPodGroupStandingClassifier_ClassifyPodGroup(t *testing.T) {
-	groupLabel := "stagger.groupID"
+	groupLabel := DefaultStaggerGroupIDLabel
 
 	ctx := context.TODO()
 	logger := logr.Discard()
@@ -304,7 +304,7 @@ func TestPodGroupStandingClassifier_ClassifyPodGroup(t *testing.T) {
 			defer ctrl.Finish()
 			mockClient := mocks.NewMockClient(ctrl)
 			mockBlocker := blockermocks.NewMockPodBlocker(ctrl)
-			classifier := NewPodGroupStandingClassifier(mockClient, mockBlocker, groupLabel)
+			classifier := NewPodGroupStandingClassifier(mockClient, mockBlocker)
 
 			// Setup mockClient.List
 			if tc.listErr != nil {

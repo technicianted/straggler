@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configs
+data:
+  policies.yaml: |
+{{ .Files.Get "configs/_policies.yaml" | indent 4 }}

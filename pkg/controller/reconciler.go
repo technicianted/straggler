@@ -81,9 +81,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	logger.V(1).Info("pod group break down", "ready", len(ready), "starting", len(starting), "blocked", len(blocked))
 
 	unblocked, err := group.Pacer.Pace(pacertypes.PodClassification{
-		AdmittedAndReadyPods: ready,
-		AdmittedNotReadyPods: starting,
-		NotAdmittedPods:      blocked,
+		Ready:    ready,
+		Starting: starting,
+		Blocked:  blocked,
 	}, logger)
 	if err != nil {
 		return reconcile.Result{}, fmt.Errorf("failed to pace pod: %v", err)

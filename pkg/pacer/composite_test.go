@@ -40,7 +40,7 @@ func TestCompositePacerSimple(t *testing.T) {
 
 	composite := NewComposite(t.Name(), []types.Pacer{pacer1, pacer2})
 	allowedPods, err := composite.Pace(types.PodClassification{
-		NotAdmittedPods: pendingPods,
+		Blocked: pendingPods,
 	}, logger)
 	require.NoError(t, err)
 	require.Len(t, allowedPods, 1)
@@ -50,7 +50,7 @@ func TestCompositePacerSimple(t *testing.T) {
 	pacer1.EXPECT().Pace(gomock.Any(), gomock.Any()).Return([]corev1.Pod{pendingPods[0]}, nil)
 	pacer2.EXPECT().Pace(gomock.Any(), gomock.Any()).Return([]corev1.Pod{pendingPods[1]}, nil)
 	allowedPods, err = composite.Pace(types.PodClassification{
-		NotAdmittedPods: pendingPods,
+		Blocked: pendingPods,
 	}, logger)
 	require.NoError(t, err)
 	require.Len(t, allowedPods, 0)

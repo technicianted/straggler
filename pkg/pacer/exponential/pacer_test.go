@@ -24,8 +24,8 @@ func generatePods(count int, prefix string) []v1.Pod {
 func TestPace(t *testing.T) {
 	tests := []struct {
 		name                 string
-		admittedCount        int
-		notAdmittedPodsCount int
+		ready                int
+		starting             int
 		minInitial           int
 		multiplier           float64
 		maxStagger           int
@@ -33,8 +33,8 @@ func TestPace(t *testing.T) {
 	}{
 		{
 			name:                 "Initial Admission",
-			admittedCount:        0,
-			notAdmittedPodsCount: 10,
+			ready:                0,
+			starting:             10,
 			minInitial:           1,
 			multiplier:           2,
 			maxStagger:           100,
@@ -42,8 +42,8 @@ func TestPace(t *testing.T) {
 		},
 		{
 			name:                 "First Exponential Step",
-			admittedCount:        1,
-			notAdmittedPodsCount: 10,
+			ready:                1,
+			starting:             10,
 			minInitial:           1,
 			multiplier:           2,
 			maxStagger:           100,
@@ -51,8 +51,8 @@ func TestPace(t *testing.T) {
 		},
 		{
 			name:                 "Second Exponential Step",
-			admittedCount:        2,
-			notAdmittedPodsCount: 10,
+			ready:                2,
+			starting:             10,
 			minInitial:           1,
 			multiplier:           2,
 			maxStagger:           100,
@@ -60,8 +60,8 @@ func TestPace(t *testing.T) {
 		},
 		{
 			name:                 "Third Exponential Step",
-			admittedCount:        4,
-			notAdmittedPodsCount: 10,
+			ready:                4,
+			starting:             10,
 			minInitial:           1,
 			multiplier:           2,
 			maxStagger:           100,
@@ -69,8 +69,8 @@ func TestPace(t *testing.T) {
 		},
 		{
 			name:                 "Mid Exponential Step",
-			admittedCount:        3,
-			notAdmittedPodsCount: 10,
+			ready:                3,
+			starting:             10,
 			minInitial:           1,
 			multiplier:           2,
 			maxStagger:           100,
@@ -78,8 +78,8 @@ func TestPace(t *testing.T) {
 		},
 		{
 			name:                 "Max Allowed Before Capping",
-			admittedCount:        7,
-			notAdmittedPodsCount: 10,
+			ready:                7,
+			starting:             10,
 			minInitial:           1,
 			multiplier:           2,
 			maxStagger:           100,
@@ -87,8 +87,8 @@ func TestPace(t *testing.T) {
 		},
 		{
 			name:                 "Allowed Count Exceeds Pending Pods",
-			admittedCount:        8,
-			notAdmittedPodsCount: 5,
+			ready:                8,
+			starting:             5,
 			minInitial:           1,
 			multiplier:           2,
 			maxStagger:           100,
@@ -96,8 +96,8 @@ func TestPace(t *testing.T) {
 		},
 		{
 			name:                 "Allowed Count Equals Pending Pods",
-			admittedCount:        8,
-			notAdmittedPodsCount: 4,
+			ready:                8,
+			starting:             4,
 			minInitial:           1,
 			multiplier:           2,
 			maxStagger:           100,
@@ -105,8 +105,8 @@ func TestPace(t *testing.T) {
 		},
 		{
 			name:                 "Large Admitted Count",
-			admittedCount:        100,
-			notAdmittedPodsCount: 150,
+			ready:                100,
+			starting:             150,
 			minInitial:           1,
 			multiplier:           2,
 			maxStagger:           200,
@@ -114,8 +114,8 @@ func TestPace(t *testing.T) {
 		},
 		{
 			name:                 "Non-Power Admitted Count",
-			admittedCount:        5,
-			notAdmittedPodsCount: 10,
+			ready:                5,
+			starting:             10,
 			minInitial:           1,
 			multiplier:           2,
 			maxStagger:           100,
@@ -123,8 +123,8 @@ func TestPace(t *testing.T) {
 		},
 		{
 			name:                 "High Multiplier",
-			admittedCount:        10,
-			notAdmittedPodsCount: 100,
+			ready:                10,
+			starting:             100,
 			minInitial:           2,
 			multiplier:           3,
 			maxStagger:           100,
@@ -132,8 +132,8 @@ func TestPace(t *testing.T) {
 		},
 		{
 			name:                 "MinInitial Greater Than AdmittedCount",
-			admittedCount:        1,
-			notAdmittedPodsCount: 10,
+			ready:                1,
+			starting:             10,
 			minInitial:           2,
 			multiplier:           2,
 			maxStagger:           100,
@@ -141,8 +141,8 @@ func TestPace(t *testing.T) {
 		},
 		{
 			name:                 "Zero Allowed Count Due to No Pending Pods",
-			admittedCount:        5,
-			notAdmittedPodsCount: 0,
+			ready:                5,
+			starting:             0,
 			minInitial:           1,
 			multiplier:           2,
 			maxStagger:           100,
@@ -150,8 +150,8 @@ func TestPace(t *testing.T) {
 		},
 		{
 			name:                 "Fractional Multiplier",
-			admittedCount:        3,
-			notAdmittedPodsCount: 10,
+			ready:                3,
+			starting:             10,
 			minInitial:           1,
 			multiplier:           1.5,
 			maxStagger:           100,
@@ -159,8 +159,8 @@ func TestPace(t *testing.T) {
 		},
 		{
 			name:                 "MinInitial Equal to Admitted Count",
-			admittedCount:        2,
-			notAdmittedPodsCount: 10,
+			ready:                2,
+			starting:             10,
 			minInitial:           2,
 			multiplier:           2,
 			maxStagger:           100,
@@ -168,8 +168,8 @@ func TestPace(t *testing.T) {
 		},
 		{
 			name:                 "Admitted Count Just Below Next Target",
-			admittedCount:        7,
-			notAdmittedPodsCount: 10,
+			ready:                7,
+			starting:             10,
 			minInitial:           1,
 			multiplier:           2,
 			maxStagger:           100,
@@ -177,12 +177,21 @@ func TestPace(t *testing.T) {
 		},
 		{
 			name:                 "Max Stagger Reached (All Pending Pods)",
-			admittedCount:        100,
-			notAdmittedPodsCount: 50,
+			ready:                100,
+			starting:             50,
 			minInitial:           1,
 			multiplier:           2,
 			maxStagger:           100,
 			expectedAllowedCount: 50,
+		},
+		{
+			name:                 "special case",
+			ready:                1,
+			starting:             7,
+			minInitial:           4,
+			multiplier:           4,
+			maxStagger:           16,
+			expectedAllowedCount: 2,
 		},
 	}
 
@@ -199,15 +208,15 @@ func TestPace(t *testing.T) {
 			p := New("test-pacer", "test-key", config)
 
 			// Generate admitted and not admitted pods
-			admittedAndReadyPods := generatePods(tt.admittedCount, "admitted-ready")
-			admittedNotReadyPods := generatePods(0, "admitted-not-ready") // Assuming no not ready pods
-			notAdmittedPods := generatePods(tt.notAdmittedPodsCount, "not-admitted")
+			readyPods := generatePods(tt.ready, "admitted-ready")
+			startingPods := generatePods(tt.starting, "admitted-not-ready") // Assuming no not ready pods
+			blockedPods := generatePods(tt.maxStagger*2, "not-admitted")
 
 			// Create PodClassification
 			podClassifications := types.PodClassification{
-				AdmittedAndReadyPods: admittedAndReadyPods,
-				AdmittedNotReadyPods: admittedNotReadyPods,
-				NotAdmittedPods:      notAdmittedPods,
+				Ready:    readyPods,
+				Starting: startingPods,
+				Blocked:  blockedPods,
 			}
 
 			// Invoke Pace method
@@ -221,8 +230,8 @@ func TestPace(t *testing.T) {
 			expected := tt.expectedAllowedCount
 
 			// Determine expected pods based on MaxStagger
-			if len(admittedAndReadyPods) >= tt.maxStagger {
-				expected = tt.notAdmittedPodsCount
+			if len(readyPods) >= tt.maxStagger {
+				expected = tt.starting
 			}
 
 			if len(allowedPods) != expected {
@@ -231,7 +240,7 @@ func TestPace(t *testing.T) {
 
 			// Verify that the correct pods are admitted
 			for i, pod := range allowedPods {
-				expectedPod := notAdmittedPods[i]
+				expectedPod := blockedPods[i]
 				if pod.ObjectMeta.Name != expectedPod.ObjectMeta.Name {
 					t.Errorf("Allowed pod at index %d = %s; want %s", i, pod.ObjectMeta.Name, expectedPod.ObjectMeta.Name)
 				}
@@ -268,9 +277,9 @@ func TestPace_SortsByCreationTimestamp(t *testing.T) {
 	}
 
 	podClassifications := types.PodClassification{
-		AdmittedAndReadyPods: []v1.Pod{},      // No admitted pods initially
-		AdmittedNotReadyPods: []v1.Pod{},      // No admitted, not ready pods
-		NotAdmittedPods:      notAdmittedPods, // 3 pending pods with different timestamps
+		Ready:    []v1.Pod{},      // No admitted pods initially
+		Starting: []v1.Pod{},      // No admitted, not ready pods
+		Blocked:  notAdmittedPods, // 3 pending pods with different timestamps
 	}
 
 	// Invoke Pace method

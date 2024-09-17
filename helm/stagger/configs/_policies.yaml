@@ -1,0 +1,10 @@
+staggeringPolicies:
+- name: image-pull
+  labelSelector:
+    staggerimages: "1"
+  groupingExpression: .spec.containers[0].image
+  pacer:
+    exponential:
+      minInitial: 4
+      maxStagger: 16
+      multiplier: 2

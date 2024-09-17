@@ -9,9 +9,9 @@ import (
 
 // PodClassification categorizes pods based on their admission and readiness status.
 type PodClassification struct {
-	AdmittedAndReadyPods []corev1.Pod
-	AdmittedNotReadyPods []corev1.Pod
-	NotAdmittedPods      []corev1.Pod
+	Ready    []corev1.Pod
+	Starting []corev1.Pod
+	Blocked  []corev1.Pod
 }
 
 type Pacer interface {

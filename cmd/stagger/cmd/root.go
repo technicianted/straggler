@@ -16,8 +16,8 @@ import (
 )
 
 var RootCMD = &cobra.Command{
-	Use:   "aicon",
-	Short: "openai service router",
+	Use:   "stagger",
+	Short: "pod staggering controller",
 }
 
 var (

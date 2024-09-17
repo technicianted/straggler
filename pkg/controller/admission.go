@@ -39,6 +39,25 @@ type Admission struct {
 	bypassFailures bool
 }
 
+func NewAdmission(classifier types.PodClassifier,
+	podGroupClassifier types.PodGroupStandingClassifier,
+	recorderFactory types.ObjectRecorderFactory,
+	podBlocker blockertypes.PodBlocker,
+	bypassFailures bool,
+	enableLabel string,
+) *Admission {
+	return &Admission{
+		classifier:          classifier,
+		podGroupClassifier:  podGroupClassifier,
+		recorderFactory:     recorderFactory,
+		podBlocker:          podBlocker,
+		enableLabel:         enableLabel,
+		staggerGroupIDLabel: DefaultStaggerGroupIDLabel,
+		jobPodLabel:         DefaultJobPodLabel,
+		bypassFailures:      bypassFailures,
+	}
+}
+
 func newAdmission(classifier types.PodClassifier,
 	podGroupClassifier types.PodGroupStandingClassifier,
 	recorderFactory types.ObjectRecorderFactory,
@@ -77,7 +96,7 @@ func (a *Admission) Default(ctx context.Context, obj runtime.Object) error {
 }
 
 func (a *Admission) handlePodAdmission(ctx context.Context, pod *corev1.Pod, logger logr.Logger) error {
-	logger.V(10).Info("handling admission of pod: %s namespace: %s", pod.Name, pod.Namespace)
+	logger.V(10).Info("handling admission of pod", "name", pod.Name, "namespace", pod.Namespace, "uid", pod.UID)
 	if !a.checkEnabled(&pod.ObjectMeta, logger) {
 		logger.V(10).Info("skipping not enabled pod")
 		return nil
@@ -114,17 +133,17 @@ func (a *Admission) handlePodAdmission(ctx context.Context, pod *corev1.Pod, log
 	logger.V(1).Info("pod group break down", "ready", len(ready), "starting", len(starting), "blocked", len(blocked))
 
 	unblocked, err := group.Pacer.Pace(pacertypes.PodClassification{
-		AdmittedAndReadyPods: ready,
-		AdmittedNotReadyPods: starting,
+		Ready:    ready,
+		Starting: starting,
 		// append current pod to blocked and see if it'll be allowed
-		NotAdmittedPods: append(blocked, *pod),
+		Blocked: append(blocked, *pod),
 	}, logger)
 	if err != nil {
 		return fmt.Errorf("failed to pace pod: %v", err)
 	}
 	for _, unblockedPod := range unblocked {
 		if unblockedPod.UID == pod.UID {
-			logger.Info("no unblocking pod as pacer allows it")
+			logger.Info("not unblocking pod as pacer allows it")
 			return nil
 		}
 	}
@@ -134,7 +153,7 @@ func (a *Admission) handlePodAdmission(ctx context.Context, pod *corev1.Pod, log
 }
 
 func (a *Admission) handleJobAdmission(_ context.Context, job *batchv1.Job, logger logr.Logger) error {
-	logger.V(10).Info("handling admission of job: %s namespace: %s", job.Name, job.Namespace)
+	logger.V(10).Info("handling admission of job", "name", job.Name, "namespace", job.Namespace, "uid", job.UID)
 	if !a.checkEnabled(&job.Spec.Template.ObjectMeta, logger) {
 		logger.V(10).Info("skipping not enabled job")
 		return nil
@@ -149,11 +168,10 @@ func (a *Admission) handleJobAdmission(_ context.Context, job *batchv1.Job, logg
 
 	// first check if the policy is enabled
 	policyExists := false
+	var policyAction batchv1.PodFailurePolicyAction
 	if job.Spec.PodFailurePolicy != nil {
 		for _, rule := range job.Spec.PodFailurePolicy.Rules {
-			if rule.Action != batchv1.PodFailurePolicyActionIgnore {
-				continue
-			}
+			policyAction = rule.Action
 			for _, condition := range rule.OnPodConditions {
 				if condition.Status == corev1.ConditionTrue && condition.Type == corev1.DisruptionTarget {
 					policyExists = true
@@ -164,6 +182,10 @@ func (a *Admission) handleJobAdmission(_ context.Context, job *batchv1.Job, logg
 				break
 			}
 		}
+	}
+	if policyExists && policyAction != batchv1.PodFailurePolicyActionIgnore {
+		logger.Info("job already has a defined DisruptionTarget policy and will be bypassed")
+		return nil
 	}
 	if !policyExists {
 		logger.Info("patching job to enable pod disruption ignoring")

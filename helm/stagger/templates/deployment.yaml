@@ -1,0 +1,170 @@
+{{- $webhooks := get (.Files.Get  "manifests/manifests.yaml" | fromYaml) "webhooks" }}
+{{- $serviceName := include "stagger.fullname" .}}
+{{- $p := dict "certificateCN" (printf "%s.%s" $serviceName .Release.Namespace) "certificateValidityDays" .Values.stagger.admission.cert.validityDays }}
+{{- template "gen-selfsigned" $p }}
+{{- $certificate := (b64enc $p.certificate) }}
+{{- $privateKey := (b64enc $p.privateKey) }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $serviceName }}
+type: Opaque
+data:
+  tls.crt: {{ $certificate }}
+  tls.key: {{ $privateKey }}
+
+---
+
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "stagger.fullname" . }}-pods
+webhooks:
+  - name: {{ .Values.stagger.admission.webhookName }}-pods
+    failurePolicy: Ignore
+    objectSelector:
+      matchExpressions:
+      - key: {{ .Values.stagger.admission.enableLabel }}
+        operator: Exists
+    clientConfig:
+      service:
+        name: {{ include "stagger.fullname" . }}
+        port: {{ .Values.service.port }}
+        namespace: {{ .Release.Namespace }}
+        path: "/mutate--v1-pod"
+      caBundle: {{ $certificate }}
+    rules:
+      - operations:
+        - CREATE
+        apiGroups:
+        - ""
+        apiVersions:
+        - "*"
+        resources:
+        - pods
+    sideEffects: None
+    admissionReviewVersions:
+    - v1
+
+---
+
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "stagger.fullname" . }}-jobs
+webhooks:
+  - name: {{ .Values.stagger.admission.webhookName }}-jobs
+    failurePolicy: Ignore
+    objectSelector:
+      matchExpressions:
+      - key: {{ .Values.stagger.admission.enableLabel }}
+        operator: Exists
+    clientConfig:
+      service:
+        name: {{ include "stagger.fullname" . }}
+        port: {{ .Values.service.port }}
+        namespace: {{ .Release.Namespace }}
+        path: "/mutate--v1-job"
+      caBundle: {{ $certificate }}
+    rules:
+      - operations:
+        - CREATE
+        apiGroups:
+        - batch
+        apiVersions:
+        - "*"
+        resources:
+        - jobs
+    sideEffects: None
+    admissionReviewVersions:
+    - v1
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "stagger.fullname" . }}
+  labels:
+    {{- include "stagger.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "stagger.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+        # workaround to chart regenerating certs with every release
+        # causing secret to be updated while pods not restarted.
+        # dummy annotation to force restart of pods with each release
+        # this way we're sure to pick up new certs.
+      {{- with ( set .Values.podAnnotations  "helmReleaseRevision" ( .Release.Revision | quote) ) }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "stagger.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "stagger.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+          - service
+          - --log-verbosity={{ .Values.stagger.logVerbosity }}
+          - --staggering-config-path=/etc/staggering/configs/policies.yaml
+          - --tls-dir=/etc/staggering/tls
+          - --health-probe-bind-address=:{{ .Values.stagger.healthProbePort }}
+          volumeMounts:
+          - name: configs
+            mountPath: /etc/staggering/configs
+            readOnly: true
+          - mountPath: /etc/staggering/tls
+            name: cert
+            readOnly: true
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+            - name: health
+              containerPort: {{ .Values.stagger.healthProbePort }}
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+      - name: configs
+        configMap:
+          name: {{ .Release.Name }}-configs
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: {{ $serviceName }}
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

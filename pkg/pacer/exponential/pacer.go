@@ -31,29 +31,29 @@ func New(name string, key string, config Config) *pacer {
 // Pace determines which pods are allowed to be admitted based on exponential pacing.
 func (p *pacer) Pace(podClassifications types.PodClassification, logger logr.Logger) ([]corev1.Pod, error) {
 	// Enforce MaxStagger limit
-	if len(podClassifications.AdmittedAndReadyPods) >= p.config.MaxStagger {
+	if len(podClassifications.Ready) >= p.config.MaxStagger {
 		logger.Info("MaxStagger limit reached, admitting all pending pods")
-		return podClassifications.NotAdmittedPods, nil
+		return podClassifications.Blocked, nil
 	}
 
-	admittedCount := len(podClassifications.AdmittedAndReadyPods) + len(podClassifications.AdmittedNotReadyPods)
+	admittedCount := len(podClassifications.Ready) + len(podClassifications.Starting)
 
-	allowedCount := calculateAllowedCount(admittedCount, len(podClassifications.NotAdmittedPods), p.config.MinInitial, p.config.Multiplier)
+	allowedCount := calculateAllowedCount(admittedCount, len(podClassifications.Blocked), p.config.MinInitial, p.config.Multiplier)
 
 	// Sort the not admitted pods by creation timestamp in ascending order (earlier pods first)
-	sort.Slice(podClassifications.NotAdmittedPods, func(i, j int) bool {
-		return podClassifications.NotAdmittedPods[i].CreationTimestamp.Time.Before(podClassifications.NotAdmittedPods[j].CreationTimestamp.Time)
+	sort.Slice(podClassifications.Blocked, func(i, j int) bool {
+		return podClassifications.Blocked[i].CreationTimestamp.Time.Before(podClassifications.Blocked[j].CreationTimestamp.Time)
 	})
 
 	// Slice the sorted pending pods to allow the determined number of pods
-	allowPods := podClassifications.NotAdmittedPods[:allowedCount]
+	allowPods := podClassifications.Blocked[:allowedCount]
 	totalAdmittedAfterPacing := admittedCount + len(allowPods)
 
-	logger.Info("Pacing Decision",
-		"totalAdmittedReady", len(podClassifications.AdmittedAndReadyPods),
-		"totalAdmittedNotReady", len(podClassifications.AdmittedNotReadyPods),
-		"pendingPods", len(podClassifications.NotAdmittedPods),
-		"admittingPodsCount", len(allowPods),
+	logger.Info("pacing decision",
+		"ready", len(podClassifications.Ready),
+		"starting", len(podClassifications.Starting),
+		"blocked", len(podClassifications.Blocked),
+		"admitted", len(allowPods),
 		"totalAdmittedAfterPacing", totalAdmittedAfterPacing,
 	)
 	return allowPods, nil
