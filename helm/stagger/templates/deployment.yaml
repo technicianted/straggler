@@ -21,7 +21,7 @@ metadata:
   name: {{ include "stagger.fullname" . }}-pods
 webhooks:
   - name: {{ .Values.stagger.admission.webhookName }}-pods
-    failurePolicy: Fail
+    failurePolicy: Ignore
     objectSelector:
       matchExpressions:
       - key: {{ .Values.stagger.admission.enableLabel }}
