@@ -41,6 +41,20 @@ func (m *MockPacer) EXPECT() *MockPacerMockRecorder {
 	return m.recorder
 }
 
+// ID mocks base method.
+func (m *MockPacer) ID() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ID")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// ID indicates an expected call of ID.
+func (mr *MockPacerMockRecorder) ID() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockPacer)(nil).ID))
+}
+
 // Pace mocks base method.
 func (m *MockPacer) Pace(podClassifications types.PodClassification, logger logr.Logger) ([]v1.Pod, error) {
 	m.ctrl.T.Helper()
@@ -54,20 +68,6 @@ func (m *MockPacer) Pace(podClassifications types.PodClassification, logger logr
 func (mr *MockPacerMockRecorder) Pace(podClassifications, logger any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pace", reflect.TypeOf((*MockPacer)(nil).Pace), podClassifications, logger)
-}
-
-// String mocks base method.
-func (m *MockPacer) String() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "String")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// String indicates an expected call of String.
-func (mr *MockPacerMockRecorder) String() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "String", reflect.TypeOf((*MockPacer)(nil).String))
 }
 
 // MockPacerFactory is a mock of PacerFactory interface.

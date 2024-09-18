@@ -15,14 +15,12 @@ var (
 )
 
 type pacer struct {
-	name   string
 	key    string
 	config Config
 }
 
 func New(name string, key string, config Config) *pacer {
 	return &pacer{
-		name:   name,
 		key:    key,
 		config: config,
 	}
@@ -61,8 +59,8 @@ func (p *pacer) Pace(podClassifications types.PodClassification, logger logr.Log
 	return allowPods, nil
 }
 
-func (p *pacer) String() string {
-	return fmt.Sprintf("%T[%s]: %s", p, p.name, p.key)
+func (p *pacer) ID() string {
+	return fmt.Sprintf("%T[%s]", p, p.key)
 }
 
 func calculateAllowedCount(readyCount, startingCount, blockedCount, minInitial int, multiplier float64) int {

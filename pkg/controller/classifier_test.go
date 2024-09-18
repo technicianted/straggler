@@ -22,6 +22,7 @@ func TestClassifierClassifySuccess(t *testing.T) {
 
 	testNamespace := "testnamespace"
 	pacer := mocks.NewMockPacer(mockCtrl)
+	pacer.EXPECT().ID().Return("pacer").AnyTimes()
 	pacerFactory := mocks.NewMockPacerFactory(mockCtrl)
 	pacerFactory.EXPECT().New(testNamespace).Return(pacer)
 
@@ -43,12 +44,6 @@ func TestClassifierClassifySuccess(t *testing.T) {
 	result, err = classifier.Classify(pod.ObjectMeta, pod.Spec, logger)
 	require.NoError(t, err)
 	require.NotNil(t, result)
-
-	// another classification different UID should reuse the same pacer
-	pod.UID = "dummy"
-	result, err = classifier.Classify(pod.ObjectMeta, pod.Spec, logger)
-	require.NoError(t, err)
-	require.NotNil(t, result)
 }
 
 func TestClassifierClassifyMultiSuccess(t *testing.T) {
@@ -63,10 +58,12 @@ func TestClassifierClassifyMultiSuccess(t *testing.T) {
 	testLabelvalue := "value1"
 	// this factory coalled for config1 with namespace matching
 	pacer1 := mocks.NewMockPacer(mockCtrl)
+	pacer1.EXPECT().ID().Return("pacer1").AnyTimes()
 	pacerFactory1 := mocks.NewMockPacerFactory(mockCtrl)
 	pacerFactory1.EXPECT().New(testNamespace).Return(pacer1)
 	// this factory called for config2 with label matching
 	pacer2 := mocks.NewMockPacer(mockCtrl)
+	pacer2.EXPECT().ID().Return("pacer2").AnyTimes()
 	pacerFactory2 := mocks.NewMockPacerFactory(mockCtrl)
 	pacerFactory2.EXPECT().New(testLabelvalue).Return(pacer2)
 

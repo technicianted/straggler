@@ -41,3 +41,6 @@ docker-push: docker-build
 
 gen:
 	go generate ./...
+
+deps:
+	go install go.uber.org/mock/mockgen@latest

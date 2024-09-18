@@ -48,11 +48,11 @@ func (p *composite) Pace(podClassifications types.PodClassification, logger logr
 	return
 }
 
-func (p *composite) String() string {
+func (p *composite) ID() string {
 	s := fmt.Sprintf("composite(%s)[%d]:", p.id, len(p.pacers))
 	inners := make([]string, 0)
 	for _, inner := range p.pacers {
-		inners = append(inners, inner.String())
+		inners = append(inners, inner.ID())
 	}
 	return s + strings.Join(inners, ",")
 }

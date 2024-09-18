@@ -1,7 +1,10 @@
 package controller
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -11,7 +14,6 @@ import (
 	pacertypes "stagger/pkg/pacer/types"
 
 	"github.com/go-logr/logr"
-	"github.com/google/uuid"
 	"github.com/ohler55/ojg/jp"
 	"github.com/patrickmn/go-cache"
 	corev1 "k8s.io/api/core/v1"
@@ -40,9 +42,8 @@ type groupEntry struct {
 type podClassifier struct {
 	sync.Mutex
 
-	configs        map[string]configEntry
-	groupsByPodUID *cache.Cache
-	groupsByID     *cache.Cache
+	configs    map[string]configEntry
+	groupsByID *cache.Cache
 	// TODO: keys can theoritically by deuplicate across configs
 	pacersByKey *cache.Cache
 }
@@ -50,10 +51,9 @@ type podClassifier struct {
 // Create a new pod classifier into pacer.
 func NewPodClassifier() *podClassifier {
 	return &podClassifier{
-		configs:        make(map[string]configEntry),
-		groupsByPodUID: cache.New(30*time.Minute, 1*time.Minute),
-		groupsByID:     cache.New(30*time.Minute, 1*time.Minute),
-		pacersByKey:    cache.New(30*time.Minute, 1*time.Minute),
+		configs:     make(map[string]configEntry),
+		groupsByID:  cache.New(30*time.Minute, 1*time.Minute),
+		pacersByKey: cache.New(30*time.Minute, 1*time.Minute),
 	}
 }
 
@@ -109,53 +109,52 @@ func (c *podClassifier) Classify(podMeta metav1.ObjectMeta, podSpec corev1.PodSp
 	defer c.Unlock()
 
 	var group *groupEntry
-	item, ok := c.groupsByPodUID.Get(string(podMeta.UID))
-	if ok {
-		group = item.(*groupEntry)
-	} else {
-		pacers := make([]pacertypes.Pacer, 0)
-		configs := make([]configEntry, 0)
-		dummyPod := corev1.Pod{
-			ObjectMeta: podMeta,
-			Spec:       podSpec,
+	pacers := make([]pacertypes.Pacer, 0)
+	configs := make([]configEntry, 0)
+	dummyPod := corev1.Pod{
+		ObjectMeta: podMeta,
+		Spec:       podSpec,
+	}
+
+	for name := range c.configs {
+		config := c.configs[name]
+		if !config.selector.Matches(labels.Set(dummyPod.Labels)) {
+			logger.V(1).Info("skipping config due to label selector", "name", name)
+			continue
 		}
 
-		for name := range c.configs {
-			config := c.configs[name]
-			if !config.selector.Matches(labels.Set(dummyPod.Labels)) {
-				logger.V(1).Info("skipping config due to label selector", "name", name)
-				continue
-			}
-
-			results := config.groupingJSONPath.Get(dummyPod)
-			if len(results) == 0 {
-				logger.V(1).Info("skipping config due to empty json path selector", "name", name)
-				continue
-			}
-			key := ""
-			for _, result := range results {
-				key += fmt.Sprintf("%v", result)
-			}
-			if len(key) == 0 {
-				logger.V(1).Info("skipping config due to empty json path selector", "name", name)
-				continue
-			}
-			logger.V(10).Info("obtained grouping key", "key", key, "jsonpathResults", len(results))
-
-			var pacer pacertypes.Pacer
-			pacerItem, ok := c.pacersByKey.Get(key)
-			if !ok {
-				pacer = config.PacerFactory.New(key)
-			} else {
-				pacer = pacerItem.(pacertypes.Pacer)
-			}
-			c.pacersByKey.Set(key, pacer, 0)
-			pacers = append(pacers, pacer)
-			configs = append(configs, config)
+		results := config.groupingJSONPath.Get(dummyPod)
+		if len(results) == 0 {
+			logger.V(1).Info("skipping config due to empty json path selector", "name", name)
+			continue
 		}
+		key := ""
+		for _, result := range results {
+			key += fmt.Sprintf("%v", result)
+		}
+		if len(key) == 0 {
+			logger.V(1).Info("skipping config due to empty json path selector", "name", name)
+			continue
+		}
+		logger.V(10).Info("obtained grouping key", "key", key, "jsonpathResults", len(results))
 
-		if len(configs) > 0 {
-			id := uuid.New().String()
+		var pacer pacertypes.Pacer
+		pacerItem, ok := c.pacersByKey.Get(key)
+		if !ok {
+			pacer = config.PacerFactory.New(key)
+		} else {
+			pacer = pacerItem.(pacertypes.Pacer)
+		}
+		c.pacersByKey.Set(key, pacer, 0)
+		pacers = append(pacers, pacer)
+		configs = append(configs, config)
+	}
+
+	if len(configs) > 0 {
+		id := c.calculateGroupID(pacers, configs)
+		if g, ok := c.groupsByID.Get(id); ok {
+			group = g.(*groupEntry)
+		} else {
 			group = &groupEntry{
 				id:             id,
 				configs:        configs,
@@ -166,8 +165,6 @@ func (c *podClassifier) Classify(podMeta metav1.ObjectMeta, podSpec corev1.PodSp
 	}
 
 	if group != nil {
-		c.groupsByPodUID.Set(string(podMeta.UID), group, 0)
-
 		return &types.PodClassification{
 			ID:    group.id,
 			Pacer: group.compositePacer,
@@ -201,4 +198,19 @@ func (c *podClassifier) newConfigEntryLocked(config configtypes.StaggerGroup) (e
 		selector:         labels.SelectorFromSet(config.LabelSelector),
 	}
 	return
+}
+
+func (c *podClassifier) calculateGroupID(pacers []pacertypes.Pacer, matchedConfigs []configEntry) string {
+	configNames := make([]string, 0)
+	for _, config := range matchedConfigs {
+		configNames = append(configNames, config.Name)
+	}
+	pacerNames := make([]string, 0)
+	for _, pacer := range pacers {
+		pacerNames = append(pacerNames, pacer.ID())
+	}
+	id := fmt.Sprintf("[%s](%s)", strings.Join(pacerNames, ","), strings.Join(configNames, ","))
+	hash := md5.New()
+	hash.Write([]byte(id))
+	return hex.EncodeToString(hash.Sum(nil))
 }

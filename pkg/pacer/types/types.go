@@ -18,7 +18,7 @@ type Pacer interface {
 	// Pace determines which pending pods should be admitted based on the current pod classifications.
 	// It returns a subset of NotAdmittedPods that are allowed to proceed.
 	Pace(podClassifications PodClassification, logger logr.Logger) (allowPods []corev1.Pod, err error)
-	String() string
+	ID() string
 }
 
 type PacerFactory interface {
