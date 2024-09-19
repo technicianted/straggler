@@ -18,10 +18,11 @@ type Pacer struct {
 }
 
 type StaggeringPolicy struct {
-	Name               string
-	LabelSelector      map[string]string
-	GroupingExpression string
-	Pacer              Pacer
+	Name                string
+	LabelSelector       map[string]string
+	BypassLabelSelector map[string]string
+	GroupingExpression  string
+	Pacer               Pacer
 }
 
 type Config struct {

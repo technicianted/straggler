@@ -29,6 +29,10 @@ staggeringPolicies:
       multiplier: 4
 ```
 
+### Staggering bypass
+
+In some situations where a staggering policy spans multiple pods controlled by different Kubernets controllers, we may want to bypass staggering for a certain set of these pods due to subtle startup dependencies. To do that, policies include `BypassLabelSelector` that lets you specify a label selector that if matched, this policy will not apply but the pod itself will be counted against pacing.
+
 ### How it works
 Stagger works by monitoring pods via an admission controller. With each new pods, it is evaluated against defined policies. Once it is associated with one, its pacer is consulted to see if it should be allowed to start. If it is not, a special `nodeSelector` is added to block its scheduling.
 

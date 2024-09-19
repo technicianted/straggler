@@ -89,10 +89,11 @@ func NewGroupClassifier(policies []StaggeringPolicy, logger logr.Logger) (contro
 			return nil, fmt.Errorf("failed to create pacer for %s: %v", policy.Name, err)
 		}
 		err = classifier.AddConfig(types.StaggerGroup{
-			Name:               policy.Name,
-			LabelSelector:      policy.LabelSelector,
-			GroupingExpression: policy.GroupingExpression,
-			PacerFactory:       pacerFactory,
+			Name:                policy.Name,
+			LabelSelector:       policy.LabelSelector,
+			BypassLabelSelector: policy.BypassLabelSelector,
+			GroupingExpression:  policy.GroupingExpression,
+			PacerFactory:        pacerFactory,
 		}, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create pod group classifer for %s: %v", policy.Name, err)

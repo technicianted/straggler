@@ -7,6 +7,8 @@ type StaggerGroup struct {
 	Name string
 	// set of labels to apply this staggering configuration.
 	LabelSelector map[string]string
+	// set of labels to bypass staggering.
+	BypassLabelSelector map[string]string
 	// jsonpath aggregation grouping expression.
 	GroupingExpression string
 

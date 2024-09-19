@@ -31,6 +31,7 @@ type configEntry struct {
 
 	groupingJSONPath jp.Expr
 	selector         labels.Selector
+	bypassSelector   labels.Selector
 }
 
 type groupEntry struct {
@@ -122,6 +123,11 @@ func (c *podClassifier) Classify(podMeta metav1.ObjectMeta, podSpec corev1.PodSp
 			logger.V(1).Info("skipping config due to label selector", "name", name)
 			continue
 		}
+		if !config.bypassSelector.Empty() &&
+			config.bypassSelector.Matches(labels.Set(dummyPod.Labels)) {
+			logger.Info("skipping config due to bypass selector match", "name", name)
+			continue
+		}
 
 		results := config.groupingJSONPath.Get(dummyPod)
 		if len(results) == 0 {
@@ -196,6 +202,7 @@ func (c *podClassifier) newConfigEntryLocked(config configtypes.StaggerGroup) (e
 		StaggerGroup:     config,
 		groupingJSONPath: expr,
 		selector:         labels.SelectorFromSet(config.LabelSelector),
+		bypassSelector:   labels.SelectorFromSet(config.BypassLabelSelector),
 	}
 	return
 }

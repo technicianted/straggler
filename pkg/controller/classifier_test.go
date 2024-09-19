@@ -111,6 +111,31 @@ func TestClassifierSkipSelector(t *testing.T) {
 	require.Nil(t, result)
 }
 
+func TestClassifierSkipBypassSelector(t *testing.T) {
+	zlog, _ := zap.NewDevelopment()
+	logger := zapr.NewLogger(zlog)
+
+	classifier := NewPodClassifier()
+	err := classifier.AddConfig(types.StaggerGroup{
+		LabelSelector:       map[string]string{"key": "value"},
+		BypassLabelSelector: map[string]string{"bypass": "this"},
+		GroupingExpression:  ".metadata.name",
+	}, logger)
+	require.NoError(t, err)
+
+	pod := corev1.Pod{
+		ObjectMeta: v1.ObjectMeta{
+			Labels: map[string]string{
+				"key":    "value",
+				"bypass": "this",
+			},
+		},
+	}
+	result, err := classifier.Classify(pod.ObjectMeta, pod.Spec, logger)
+	require.NoError(t, err)
+	require.Nil(t, result)
+}
+
 func TestClassifierSkipNoKey(t *testing.T) {
 	zlog, _ := zap.NewDevelopment()
 	logger := zapr.NewLogger(zlog)
