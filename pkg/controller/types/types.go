@@ -53,3 +53,11 @@ type PodClassifierConfigurator interface {
 	RemoveConfig(name string, logger logr.Logger) error
 	UpdateConfig(config configtypes.StaggerGroup, logger logr.Logger) error
 }
+
+// An implementation that is used by the admission controller to minimize
+// race admitted pods and committed pods.
+// It is assumed that it is best effort.
+type AdmissionFlightTracker interface {
+	Track(key string, object metav1.ObjectMeta, logger logr.Logger) error
+	WaitOne(ctx context.Context, key string, logger logr.Logger) error
+}

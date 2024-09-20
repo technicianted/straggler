@@ -7,6 +7,15 @@ A typical scenario is where large number of pods need to be created rapidly. Thi
 
 Stagger provides multiple staggering policies. Policies define matching pods, a grouping key and a pacer. Pods are matched using label selectors. A grouping key is a jsonpath expression that gets applied to pod specs. They key places all pods in a single staggering group. Finally, each staggering group has a defined pacer that controls how fast the pods are started.
 
+### Building
+
+```bash
+$ # build binaries only in bin/stagger
+$ make binaries
+$ # build docker image
+$ make docker-build
+```
+
 ### Example
 Consider the following example where we want to stagger access to image pulls such that something like [spegel](https://github.com/spegel-org/spegel) gets a chance to seed the images. We want to control staggering per image, not as a whole for cache population and seeding:
 ```yaml
@@ -27,6 +36,35 @@ staggeringPolicies:
       minInitial: 4
       maxStagger: 16
       multiplier: 4
+```
+
+then configure your pods with the labels:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+        # enable staggering for pods created by this controller.
+        v1.stagger.technicianted/enable: "1"
+        # enable image staggering policy.
+        staggerimages: "1"
+    spec:
+      containers:
+      - name: nginx
+        # all pods for this deployment and any other controllers 
+        # using this image will share the same policy and staggering group.
+        image: nginx:1.14.2
 ```
 
 ### Staggering bypass

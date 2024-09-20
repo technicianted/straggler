@@ -92,6 +92,8 @@ spec:
   selector:
     matchLabels:
       {{- include "stagger.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: Recreate
   template:
     metadata:
         # workaround to chart regenerating certs with every release

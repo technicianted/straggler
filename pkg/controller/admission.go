@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"time"
 
 	blockertypes "stagger/pkg/blocker/types"
 	"stagger/pkg/controller/types"
@@ -21,6 +22,7 @@ var (
 	DefaultEnableLabel         = "v1.stagger.technicianted/enable"
 	DefaultStaggerGroupIDLabel = "v1.stagger.technicianted/group"
 	DefaultJobPodLabel         = "v1.stagger.technicianted/jobPod"
+	DefaultFlightWait          = 500 * time.Millisecond
 )
 
 var _ admission.CustomDefaulter = &Admission{}
@@ -31,6 +33,7 @@ type Admission struct {
 	podGroupClassifier types.PodGroupStandingClassifier
 	recorderFactory    types.ObjectRecorderFactory
 	podBlocker         blockertypes.PodBlocker
+	flightTracker      types.AdmissionFlightTracker
 
 	enableLabel         string
 	staggerGroupIDLabel string
@@ -43,6 +46,7 @@ func NewAdmission(classifier types.PodClassifier,
 	podGroupClassifier types.PodGroupStandingClassifier,
 	recorderFactory types.ObjectRecorderFactory,
 	podBlocker blockertypes.PodBlocker,
+	flightTracker types.AdmissionFlightTracker,
 	bypassFailures bool,
 	enableLabel string,
 ) *Admission {
@@ -51,6 +55,7 @@ func NewAdmission(classifier types.PodClassifier,
 		podGroupClassifier:  podGroupClassifier,
 		recorderFactory:     recorderFactory,
 		podBlocker:          podBlocker,
+		flightTracker:       flightTracker,
 		enableLabel:         enableLabel,
 		staggerGroupIDLabel: DefaultStaggerGroupIDLabel,
 		jobPodLabel:         DefaultJobPodLabel,
@@ -62,12 +67,14 @@ func newAdmission(classifier types.PodClassifier,
 	podGroupClassifier types.PodGroupStandingClassifier,
 	recorderFactory types.ObjectRecorderFactory,
 	podBlocker blockertypes.PodBlocker,
+	flightTracker types.AdmissionFlightTracker,
 	bypassFailures bool,
 ) *Admission {
 	return &Admission{
 		classifier:          classifier,
 		podGroupClassifier:  podGroupClassifier,
 		recorderFactory:     recorderFactory,
+		flightTracker:       flightTracker,
 		podBlocker:          podBlocker,
 		enableLabel:         DefaultEnableLabel,
 		staggerGroupIDLabel: DefaultStaggerGroupIDLabel,
@@ -126,6 +133,14 @@ func (a *Admission) handlePodAdmission(ctx context.Context, pod *corev1.Pod, log
 	}
 	pod.Labels[a.staggerGroupIDLabel] = group.ID
 
+	logger.V(1).Info("will wait for flight tracker", "wait", DefaultFlightWait)
+	flightCTX, cancel := context.WithTimeout(ctx, DefaultFlightWait)
+	defer cancel()
+	err = a.flightTracker.WaitOne(flightCTX, group.ID, logger)
+	if err != nil {
+		logger.Info("failed to wait on flight tracker", "error", err)
+	}
+
 	ready, starting, blocked, err := a.podGroupClassifier.ClassifyPodGroup(ctx, group.ID, logger)
 	if err != nil {
 		return fmt.Errorf("failed to classify pod group: %v", err)
@@ -141,6 +156,13 @@ func (a *Admission) handlePodAdmission(ctx context.Context, pod *corev1.Pod, log
 	if err != nil {
 		return fmt.Errorf("failed to pace pod: %v", err)
 	}
+
+	defer func() {
+		err := a.flightTracker.Track(group.ID, pod.ObjectMeta, logger)
+		if err != nil {
+			logger.Info("failed to track pod flight", "error", err)
+		}
+	}()
 	for _, unblockedPod := range unblocked {
 		if unblockedPod.Name == pod.Name &&
 			unblockedPod.Namespace == pod.Namespace &&

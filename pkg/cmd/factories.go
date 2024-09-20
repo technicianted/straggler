@@ -113,6 +113,7 @@ func NewRecorderFactory(logger logr.Logger) (controllertypes.ObjectRecorderFacto
 
 func RegisterAdmissionController(
 	options Options,
+	matchPredicate predicate.Predicate,
 	mgr manager.Manager,
 	classifier controllertypes.PodClassifier,
 	podGroupClassifier controllertypes.PodGroupStandingClassifier,
@@ -120,17 +121,32 @@ func RegisterAdmissionController(
 	logger logr.Logger,
 ) error {
 	logger.Info("creating admission controller")
+	flightTracker := controller.NewFlightTracker(
+		mgr.GetClient(),
+		options.MaxFlightDuration,
+		controller.DefaultStaggerGroupIDLabel,
+		logger,
+	)
+	err := builder.ControllerManagedBy(mgr).
+		Named("flight-tracker").
+		For(&corev1.Pod{}, builder.WithPredicates(matchPredicate)).
+		Complete(flightTracker)
+	if err != nil {
+		return fmt.Errorf("failed to watch for pods: %v", err)
+	}
+
 	admission := controller.NewAdmission(
 		classifier,
 		podGroupClassifier,
 		recorderFactory,
 		blocker.NewNodeSelectorPodBlocker(),
+		flightTracker,
 		options.BypassFailure,
 		options.EnableLabel,
 	)
 
 	logger.Info("registering admission controller for pods")
-	err := builder.WebhookManagedBy(mgr).
+	err = builder.WebhookManagedBy(mgr).
 		For(&corev1.Pod{}).
 		WithDefaulter(admission).
 		Complete()

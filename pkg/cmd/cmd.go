@@ -55,6 +55,7 @@ func NewCMDWithManager(mgr manager.Manager, options Options, logger logr.Logger)
 	}
 	if err := RegisterAdmissionController(
 		options,
+		matchPredicate,
 		mgr,
 		classifier,
 		podGroupClassifier,

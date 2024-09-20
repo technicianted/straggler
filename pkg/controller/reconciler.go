@@ -47,11 +47,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	err := r.client.Get(ctx, request.NamespacedName, pod)
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
-			logger.Error(err, "Failed to get Pod")
+			logger.Error(err, "failed to get Pod")
 			return reconcile.Result{}, err
 		}
 		// Pod not found; it might have been deleted after the reconcile request.
-		logger.Info("Pod not found; it might have been deleted", "pod", request.NamespacedName)
+		logger.Info("pod not found; it might have been deleted", "pod", request.NamespacedName)
 		return reconcile.Result{}, nil
 	}
 

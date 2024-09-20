@@ -290,3 +290,54 @@ func (mr *MockPodClassifierConfiguratorMockRecorder) UpdateConfig(config, logger
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateConfig", reflect.TypeOf((*MockPodClassifierConfigurator)(nil).UpdateConfig), config, logger)
 }
+
+// MockAdmissionFlightTracker is a mock of AdmissionFlightTracker interface.
+type MockAdmissionFlightTracker struct {
+	ctrl     *gomock.Controller
+	recorder *MockAdmissionFlightTrackerMockRecorder
+}
+
+// MockAdmissionFlightTrackerMockRecorder is the mock recorder for MockAdmissionFlightTracker.
+type MockAdmissionFlightTrackerMockRecorder struct {
+	mock *MockAdmissionFlightTracker
+}
+
+// NewMockAdmissionFlightTracker creates a new mock instance.
+func NewMockAdmissionFlightTracker(ctrl *gomock.Controller) *MockAdmissionFlightTracker {
+	mock := &MockAdmissionFlightTracker{ctrl: ctrl}
+	mock.recorder = &MockAdmissionFlightTrackerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockAdmissionFlightTracker) EXPECT() *MockAdmissionFlightTrackerMockRecorder {
+	return m.recorder
+}
+
+// Track mocks base method.
+func (m *MockAdmissionFlightTracker) Track(key string, object v10.ObjectMeta, logger logr.Logger) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Track", key, object, logger)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Track indicates an expected call of Track.
+func (mr *MockAdmissionFlightTrackerMockRecorder) Track(key, object, logger any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Track", reflect.TypeOf((*MockAdmissionFlightTracker)(nil).Track), key, object, logger)
+}
+
+// WaitOne mocks base method.
+func (m *MockAdmissionFlightTracker) WaitOne(ctx context.Context, key string, logger logr.Logger) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WaitOne", ctx, key, logger)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// WaitOne indicates an expected call of WaitOne.
+func (mr *MockAdmissionFlightTrackerMockRecorder) WaitOne(ctx, key, logger any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WaitOne", reflect.TypeOf((*MockAdmissionFlightTracker)(nil).WaitOne), ctx, key, logger)
+}
