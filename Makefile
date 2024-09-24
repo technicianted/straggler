@@ -2,6 +2,21 @@
 # Variables                                      #
 ##################################################
 
+
+# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
+ENVTEST_K8S_VERSION = 1.25.0
+
+## Location to install dependencies to
+LOCALBIN ?= $(shell pwd)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
+
+KUBEBUILDER_ASSETS ?= $(LOCALBIN)/kubebuilder
+$(KUBEBUILDER_ASSETS):
+	mkdir -p $(KUBEBUILDER_ASSETS)
+
+ENVTEST ?= $(LOCALBIN)/setup-envtest
+
 VERSION		   ?= latest
 IMAGE_REGISTRY ?= technicianted
 IMAGE_FULL = $(IMAGE_REGISTRY)/stagger:$(VERSION)

@@ -18,21 +18,10 @@ type CMD struct {
 	shutdownCompleteChan  chan struct{}
 }
 
-func NewCMD(options Options, logger logr.Logger) (*CMD, error) {
+func NewCMDWithManager(mgr manager.Manager, options Options, logger logr.Logger) (*CMD, error) {
 	config, err := LoadConfig(options.StaggeringConfigPath, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configs: %v", err)
-	}
-
-	kubernetesConfig, err := CreateKubernetesConfig(options.KubernetesOptions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create kubernets config: %v", err)
-	}
-	options.Config = kubernetesConfig
-
-	mgr, err := NewControllerManager(options, logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create controller manager: %v", err)
 	}
 
 	classifier, err := NewGroupClassifier(config.StaggeringPolicies, logger)
@@ -79,6 +68,21 @@ func NewCMD(options Options, logger logr.Logger) (*CMD, error) {
 		options: options,
 		mgr:     mgr,
 	}, nil
+}
+
+func NewCMD(options Options, logger logr.Logger) (*CMD, error) {
+	kubernetesConfig, err := CreateKubernetesConfig(options.KubernetesOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kubernets config: %v", err)
+	}
+	options.Config = kubernetesConfig
+
+	mgr, err := NewControllerManager(options, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create controller manager: %v", err)
+	}
+
+	return NewCMDWithManager(mgr, options, logger)
 }
 
 func (c *CMD) Start(logger logr.Logger) error {

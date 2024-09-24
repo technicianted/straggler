@@ -98,7 +98,7 @@ func (a *Admission) Default(ctx context.Context, obj runtime.Object) error {
 func (a *Admission) handlePodAdmission(ctx context.Context, pod *corev1.Pod, logger logr.Logger) error {
 	logger.V(10).Info("handling admission of pod", "name", pod.Name, "generateName", pod.GenerateName, "namespace", pod.Namespace)
 	if !a.checkEnabled(&pod.ObjectMeta, logger) {
-		logger.V(10).Info("skipping not enabled pod")
+		logger.V(0).Info("skipping not enabled pod")
 		return nil
 	}
 
@@ -157,7 +157,7 @@ func (a *Admission) handlePodAdmission(ctx context.Context, pod *corev1.Pod, log
 func (a *Admission) handleJobAdmission(_ context.Context, job *batchv1.Job, logger logr.Logger) error {
 	logger.V(10).Info("handling admission of job", "name", job.Name, "namespace", job.Namespace)
 	if !a.checkEnabled(&job.Spec.Template.ObjectMeta, logger) {
-		logger.V(10).Info("skipping not enabled job")
+		logger.V(0).Info("skipping not enabled job")
 		return nil
 	}
 

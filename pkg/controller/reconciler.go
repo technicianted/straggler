@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -91,7 +92,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	// evict all the unblocked pods
 	for _, unblockedPod := range unblocked {
-		if err := r.client.Create(ctx, createEviction(unblockedPod.Namespace, unblockedPod.Name)); err != nil {
+		if err := evictPod(ctx, r.client, &unblockedPod); err != nil {
 			logger.Error(err, "failed to evict pod", "pod", unblockedPod.Name, "namespace", unblockedPod.Namespace)
 		}
 	}
@@ -114,18 +115,10 @@ func (r *Reconciler) checkEnabled(objectMeta *metav1.ObjectMeta, logger logr.Log
 	return false
 }
 
-func createEviction(namespace, podName string) *policyv1.Eviction {
-	return &policyv1.Eviction{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Eviction",
-			APIVersion: "policy/v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      podName,
-			Namespace: namespace,
-		},
-		DeleteOptions: &metav1.DeleteOptions{
-			GracePeriodSeconds: new(int64), // make it 0, so that it's immediate
-		},
+func evictPod(ctx context.Context, cl client.Client, pod *corev1.Pod) error {
+	eviction := &policyv1.Eviction{
+		DeleteOptions: &metav1.DeleteOptions{GracePeriodSeconds: ptr.To(int64(0))},
 	}
+
+	return cl.SubResource("eviction").Create(ctx, pod, eviction, &client.SubResourceCreateOptions{})
 }

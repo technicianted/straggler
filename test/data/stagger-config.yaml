@@ -1,0 +1,10 @@
+staggeringPolicies:
+- name: test-staggering-policy  
+  labelSelector:
+    app: test-app
+  groupingExpression: ".spec.containers[0].image"
+  pacer:
+    exponential:
+      minInitial: 1
+      maxStagger: 16
+      multiplier: 2.0
