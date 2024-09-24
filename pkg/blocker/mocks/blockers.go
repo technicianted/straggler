@@ -55,18 +55,17 @@ func (mr *MockPodBlockerMockRecorder) Block(podSpec, logger any) *gomock.Call {
 }
 
 // IsBlocked mocks base method.
-func (m *MockPodBlocker) IsBlocked(podSpec *v1.PodSpec, logger logr.Logger) (bool, error) {
+func (m *MockPodBlocker) IsBlocked(podSpec *v1.PodSpec) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsBlocked", podSpec, logger)
+	ret := m.ctrl.Call(m, "IsBlocked", podSpec)
 	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	return ret0
 }
 
 // IsBlocked indicates an expected call of IsBlocked.
-func (mr *MockPodBlockerMockRecorder) IsBlocked(podSpec, logger any) *gomock.Call {
+func (mr *MockPodBlockerMockRecorder) IsBlocked(podSpec any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsBlocked", reflect.TypeOf((*MockPodBlocker)(nil).IsBlocked), podSpec, logger)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsBlocked", reflect.TypeOf((*MockPodBlocker)(nil).IsBlocked), podSpec)
 }
 
 // Unblock mocks base method.

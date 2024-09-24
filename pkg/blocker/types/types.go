@@ -15,5 +15,5 @@ type PodBlocker interface {
 	// Unblock removes any blocking that was inserted in podSpec.
 	Unblock(podSpec *corev1.PodSpec, logger logr.Logger) error
 	// IsBlocked checks to see if podSpec has been blocked.
-	IsBlocked(podSpec *corev1.PodSpec, logger logr.Logger) (bool, error)
+	IsBlocked(podSpec *corev1.PodSpec) bool
 }

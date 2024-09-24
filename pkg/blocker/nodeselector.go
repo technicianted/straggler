@@ -46,10 +46,10 @@ func (b *NodeSelectorPodBlocker) Unblock(podSpec *corev1.PodSpec, logger logr.Lo
 	return nil
 }
 
-func (b *NodeSelectorPodBlocker) IsBlocked(podSpec *corev1.PodSpec, logger logr.Logger) (bool, error) {
+func (b *NodeSelectorPodBlocker) IsBlocked(podSpec *corev1.PodSpec) bool {
 	if podSpec.NodeSelector == nil {
-		return false, nil
+		return false
 	}
 	_, ok := podSpec.NodeSelector[b.nodeSelectorLabelName]
-	return ok, nil
+	return ok
 }
