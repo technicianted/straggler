@@ -3,8 +3,12 @@
 package test
 
 import (
+	"fmt"
+	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -40,8 +44,75 @@ func TestAPIs(t *testing.T) {
 	RunSpecs(t, "Pacer Suite")
 }
 
+// GetProjectDir will return the directory where the project is
+func GetProjectDir() (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return wd, err
+	}
+	wd = strings.Replace(wd, "/test/e2e", "", -1)
+	return wd, nil
+}
+
+// Run executes the provided command within this context
+func Run(cmd *exec.Cmd) (string, error) {
+	dir, _ := GetProjectDir()
+	cmd.Dir = dir
+	if err := os.Chdir(cmd.Dir); err != nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "chdir dir: %s\n", err)
+	}
+	cmd.Env = append(os.Environ(), "GO111MODULE=on")
+	command := strings.Join(cmd.Args, " ")
+	_, _ = fmt.Fprintf(GinkgoWriter, "running: %s\n", command)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return string(output), fmt.Errorf("%s failed with error: (%v) %s", command, err, string(output))
+	}
+	return string(output), nil
+}
+
+// InstallVolcano installs the cert manager bundle.
+func InstallVolcano() error {
+	url := "https://raw.githubusercontent.com/volcano-sh/volcano/master/installer/volcano-development.yaml"
+	cmd := exec.Command("kubectl", "apply", "-f", url)
+	if _, err := Run(cmd); err != nil {
+		return err
+	}
+	// Wait for volcano to be ready, which can take time if volcano
+	//was re-installed after uninstalling on a cluster.
+	cmd = exec.Command("kubectl", "rollout", "status",
+		"deployment.apps/volcano-admission",
+		"--namespace", "volcano-system",
+		"--timeout", "5m",
+	)
+	_, err := Run(cmd)
+	if err != nil {
+		return err
+	}
+	cmd = exec.Command("kubectl", "rollout", "status",
+		"deployment.apps/volcano-controllers",
+		"--namespace", "volcano-system",
+		"--timeout", "5m",
+	)
+	_, err = Run(cmd)
+	if err != nil {
+		return err
+	}
+	cmd = exec.Command("kubectl", "rollout", "status",
+		"deployment.apps/volcano-scheduler",
+		"--namespace", "volcano-system",
+		"--timeout", "5m",
+	)
+	_, err = Run(cmd)
+	return err
+}
+
 var _ = BeforeSuite(func() {
 	By("bootstrapping test environment")
+
+	Expect(InstallVolcano()).NotTo(HaveOccurred())
+	logf.Log.Info("deployed volcano")
+
 	testEnv = &envtest.Environment{
 		WebhookInstallOptions: envtest.WebhookInstallOptions{
 			Paths:                        []string{filepath.Join("data", "manifest.yaml")},

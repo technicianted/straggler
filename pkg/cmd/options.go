@@ -30,6 +30,7 @@ type Options struct {
 	KubernetesOptions
 
 	StaggeringConfigPath   string        `cliArgName:"staggering-config-path" cliArgDescription:"path to staggering config yaml file" cliArgGroup:"Staggering"`
+	StaggerContainerImage  string        `cliArgName:"staggering-container-image" cliArgDescription:"stagger container image to use for stub pods" cliArgGroup:"Staggering"`
 	BypassFailure          bool          `cliArgName:"staggering-bypass-errors" cliArgDescription:"do not block admission on errors" cliArgGroup:"Staggering"`
 	EnableLabel            string        `cliArgName:"staggering-enable-label" cliArgDescription:"pod label to enable staggering behavior" cliArgGroup:"Staggering"`
 	MaxFlightDuration      time.Duration `cliArgName:"staggering-max-pod-flight-duration" cliArgDescription:"maximum time to wait for a pod from admission to reconciliation after which it is assumed committed" cliArgGroup:"Staggering"`
@@ -57,6 +58,7 @@ func NewLeaderElectionOptions() LeaderElectionOptions {
 func NewOptions() Options {
 	return Options{
 		KubernetesOptions:      NewKubernetesOptions(),
+		StaggerContainerImage:  "technicianted/stagger",
 		BypassFailure:          true,
 		EnableLabel:            controller.DefaultEnableLabel,
 		MaxFlightDuration:      1000 * time.Millisecond,

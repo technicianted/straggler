@@ -61,13 +61,19 @@ func TestMain(m *testing.M) {
 
 	kindEnv, _ := env.NewFromFlags()
 	kindClusterName := envconf.RandomName("kind", 16)
+	kubeConfig, err := os.CreateTemp("", "stagger-kind")
+	if err != nil {
+		logger.Info("failed to create temp configfile", "error", err)
+		os.Exit(1)
+	}
+	kubeConfig.Close()
+	os.Setenv("KUBECONFIG", kubeConfig.Name())
 
 	kindEnv.Setup(
 		envfuncs.CreateCluster(kind.NewProvider(), kindClusterName),
 		func(ctx context.Context, c *envconf.Config) (context.Context, error) {
 			kubeConfigPath = c.KubeconfigFile()
 			os.Setenv("USE_EXISTING_CLUSTER", "true")
-			os.Setenv("KUBECONFIG", kubeConfigPath)
 			logger.Info("To import the kubeconfig, run the following command", "command", "export KUBECONFIG="+kubeConfigPath)
 			return ctx, nil
 		},
