@@ -35,12 +35,16 @@ type PodClassification struct {
 	Pacer pacertypes.Pacer
 }
 
+//go:generate mockgen -package mocks -destination ../mocks/pod_classifier.go -source $GOFILE
+
 // Classify a pod to a staggering pacer.
 type PodClassifier interface {
 	// Classify a pod to a staggering group. If pod does not belong to any group
 	// nil is returned.
 	Classify(podMeta metav1.ObjectMeta, podSpec corev1.PodSpec, logger logr.Logger) (*PodClassification, error)
 }
+
+//go:generate mockgen -package mocks -destination ../mocks/pod_group_standing_classifier.go -source $GOFILE
 
 // Interface to provide classification of all pods within a staggering group.
 type PodGroupStandingClassifier interface {
