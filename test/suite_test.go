@@ -1,8 +1,6 @@
 package test
 
 import (
-	"context"
-	"os"
 	"path"
 	"path/filepath"
 	"testing"
@@ -13,75 +11,48 @@ import (
 
 	"stagger/pkg/cmd"
 
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var (
-	cfg     *rest.Config
-	testEnv *envtest.Environment
-	ctx     context.Context
-	cancel  context.CancelFunc
-
+	testEnv        *envtest.Environment
 	kubeConfigPath string
+	mgr            manager.Manager
+	command        *cmd.CMD
+	logger         logr.Logger
+)
 
-	namespace = "default"
-
-	mgr     manager.Manager
-	command *cmd.CMD
+const (
+	Namespace = "default"
 )
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 
-	RunSpecs(t, "Webhook Suite")
-}
-
-func setupController(mgr manager.Manager, logger logr.Logger) (*cmd.CMD, error) {
-	opts := cmd.NewOptions()
-	opts.StaggeringConfigPath = path.Join("data", "stagger-config.yaml")
-	return cmd.NewCMDWithManager(mgr, opts, logger)
+	RunSpecs(t, "Pacer Suite")
 }
 
 var _ = BeforeSuite(func() {
-	ctx, cancel = context.WithCancel(context.TODO())
-
 	By("bootstrapping test environment")
-
-	var err error
-
 	testEnv = &envtest.Environment{
 		WebhookInstallOptions: envtest.WebhookInstallOptions{
 			Paths:                        []string{filepath.Join("data", "manifest.yaml")},
 			LocalServingCertDir:          filepath.Join("data", "tls"),
-			LocalServingHostExternalName: "host.docker.internal",
+			LocalServingHost:             "0.0.0.0",
+			LocalServingHostExternalName: webhookLocalServingHostExternalName,
 		},
 	}
 
 	// cfg is defined in this file globally.
-	cfg, err = testEnv.Start()
+	cfg, err := testEnv.Start()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
-
-	// create a temp path for the kubeconfig
-	kubeConfigPath = CreateKubeconfigFileForRestConfig(*cfg)
-	logf.Log.Info("kubeconfig path", "path", kubeConfigPath)
-	// write testenv.config to the kubeconfig path
-
-	// // Register core Kubernetes APIs (usually already registered, but can be explicit)
-	// err = corev1.AddToScheme(scheme)
-	// Expect(err).NotTo(HaveOccurred())
-
-	// // **Register the Deployment kind**
-	// err = appsv1.AddToScheme(scheme)
-	// Expect(err).NotTo(HaveOccurred())
 
 	// start webhook server using Manager
 	webhookInstallOptions := &testEnv.WebhookInstallOptions
@@ -121,37 +92,13 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	err := command.Stop(logf.Log)
 	Expect(err).NotTo(HaveOccurred())
-	cancel()
 	By("tearing down the test environment")
 	err = testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })
 
-func CreateKubeconfigFileForRestConfig(restConfig rest.Config) string {
-	clusters := make(map[string]*clientcmdapi.Cluster)
-	clusters["default-cluster"] = &clientcmdapi.Cluster{
-		Server:                   restConfig.Host,
-		CertificateAuthorityData: restConfig.CAData,
-	}
-	contexts := make(map[string]*clientcmdapi.Context)
-	contexts["default-context"] = &clientcmdapi.Context{
-		Cluster:  "default-cluster",
-		AuthInfo: "default-user",
-	}
-	authinfos := make(map[string]*clientcmdapi.AuthInfo)
-	authinfos["default-user"] = &clientcmdapi.AuthInfo{
-		ClientCertificateData: restConfig.CertData,
-		ClientKeyData:         restConfig.KeyData,
-	}
-	clientConfig := clientcmdapi.Config{
-		Kind:           "Config",
-		APIVersion:     "v1",
-		Clusters:       clusters,
-		Contexts:       contexts,
-		CurrentContext: "default-context",
-		AuthInfos:      authinfos,
-	}
-	kubeConfigFile, _ := os.CreateTemp("", "kubeconfig")
-	_ = clientcmd.WriteToFile(clientConfig, kubeConfigFile.Name())
-	return kubeConfigFile.Name()
+func setupController(mgr manager.Manager, logger logr.Logger) (*cmd.CMD, error) {
+	opts := cmd.NewOptions()
+	opts.StaggeringConfigPath = path.Join("data", "stagger-config.yaml")
+	return cmd.NewCMDWithManager(mgr, opts, logger)
 }
