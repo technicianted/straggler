@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
@@ -89,6 +90,18 @@ func InstallVolcano() error {
 	if err != nil {
 		return err
 	}
+	cmd = exec.Command("kubectl", "wait",
+		"pods",
+		"--for=condition=Ready",
+		"-l", "app=volcano-admission",
+		"--namespace", "volcano-system")
+	_, err = Run(cmd)
+	if err != nil {
+		return err
+	}
+	// wait for admission service to be fully ready
+	time.Sleep(10 * time.Second)
+
 	cmd = exec.Command("kubectl", "rollout", "status",
 		"deployment.apps/volcano-controllers",
 		"--namespace", "volcano-system",
@@ -156,7 +169,6 @@ var _ = BeforeSuite(func() {
 	// wait for the webhook server to get ready
 	Eventually(func() error {
 		// check if the server is ready
-		// time.Sleep(time.Minute * 2)
 		return nil
 	}).Should(Succeed())
 

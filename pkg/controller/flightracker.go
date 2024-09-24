@@ -114,7 +114,7 @@ func (f *flightTracker) WaitOne(ctx context.Context, key string, logger logr.Log
 
 	flights, ok := f.flightsByKey[key]
 	if !ok {
-		logger.Info("flight key entry does not exist, this should not happen", "key", key)
+		logger.V(1).Info("flight key entry does not exist", "key", key)
 		f.Unlock()
 		return nil
 	}

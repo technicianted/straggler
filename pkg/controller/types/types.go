@@ -42,6 +42,7 @@ type PodClassifier interface {
 	// Classify a pod to a staggering group. If pod does not belong to any group
 	// nil is returned.
 	Classify(podMeta metav1.ObjectMeta, podSpec corev1.PodSpec, logger logr.Logger) (*PodClassification, error)
+	ClassifyByGroupID(groupID string, logger logr.Logger) (*PodClassification, error)
 }
 
 // Interface to provide classification of all pods within a staggering group.

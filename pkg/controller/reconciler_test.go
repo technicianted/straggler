@@ -114,7 +114,8 @@ func TestReconcile_PodClassificationFailure(t *testing.T) {
 			Namespace: "default",
 			Name:      "error-pod",
 			Labels: map[string]string{
-				DefaultEnableLabel: "1",
+				DefaultEnableLabel:         "1",
+				DefaultStaggerGroupIDLabel: "groupid",
 			},
 		},
 		Spec: corev1.PodSpec{},
@@ -137,14 +138,13 @@ func TestReconcile_PodClassificationFailure(t *testing.T) {
 	// Set expectation: Classify returns error
 	mockClassifier.
 		EXPECT().
-		Classify(pod.ObjectMeta, pod.Spec, gomock.Any()).
+		ClassifyByGroupID("groupid", gomock.Any()).
 		Return(nil, errors.New("classification error"))
 
 	ctx := context.TODO()
 	_, err := reconciler.Reconcile(ctx, req)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to classify group")
 }
 
 func TestReconcile_PodNotInAnyGroup(t *testing.T) {
@@ -163,7 +163,8 @@ func TestReconcile_PodNotInAnyGroup(t *testing.T) {
 			Namespace: "default",
 			Name:      "ungrouped-pod",
 			Labels: map[string]string{
-				DefaultEnableLabel: "1",
+				DefaultEnableLabel:         "1",
+				DefaultStaggerGroupIDLabel: "groupid",
 			},
 		},
 		Spec: corev1.PodSpec{},
@@ -186,14 +187,13 @@ func TestReconcile_PodNotInAnyGroup(t *testing.T) {
 	// Set expectation: Classify returns nil group
 	mockClassifier.
 		EXPECT().
-		Classify(pod.ObjectMeta, pod.Spec, gomock.Any()).
+		ClassifyByGroupID("groupid", gomock.Any()).
 		Return(nil, nil)
 
 	ctx := context.TODO()
-	res, err := reconciler.Reconcile(ctx, req)
+	_, err := reconciler.Reconcile(ctx, req)
 
-	assert.NoError(t, err)
-	assert.Equal(t, reconcile.Result{}, res)
+	assert.Error(t, err)
 }
 
 func TestReconcile_SuccessfulReconciliation(t *testing.T) {
@@ -214,14 +214,15 @@ func TestReconcile_SuccessfulReconciliation(t *testing.T) {
 			Namespace: "default",
 			Name:      "grouped-pod",
 			Labels: map[string]string{
-				DefaultEnableLabel: "1",
+				DefaultEnableLabel:         "1",
+				DefaultStaggerGroupIDLabel: "groupid",
 			},
 		},
 		Spec: corev1.PodSpec{},
 	}
 
 	group := &types.PodClassification{
-		ID:    "group1",
+		ID:    "groupid",
 		Pacer: mockPacer,
 	}
 
@@ -252,13 +253,13 @@ func TestReconcile_SuccessfulReconciliation(t *testing.T) {
 	// Set expectation: Classify returns the group
 	mockClassifier.
 		EXPECT().
-		Classify(pod.ObjectMeta, pod.Spec, gomock.Any()).
+		ClassifyByGroupID("groupid", gomock.Any()).
 		Return(group, nil)
 
 	// Set expectation: ClassifyPodGroup
 	mockGroupClassifier.
 		EXPECT().
-		ClassifyPodGroup(gomock.Any(), "group1", gomock.Any()).
+		ClassifyPodGroup(gomock.Any(), "groupid", gomock.Any()).
 		Return(readyPods, startingPods, blockedPods, nil)
 
 	// Set expectation: Pacer.Pace

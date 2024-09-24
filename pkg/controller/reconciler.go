@@ -62,20 +62,28 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return reconcile.Result{}, nil
 	}
 
-	group, err := r.classifier.Classify(pod.ObjectMeta, pod.Spec, logger)
-	if err != nil {
-		return reconcile.Result{}, fmt.Errorf("failed to classify group: %v", err)
-	}
-	if group == nil {
-		logger.Info("pod does not belong to any staggering group")
-		return reconcile.Result{}, nil
-	}
-	logger.V(1).Info("staggering group", "id", group.ID, "pacer", group.Pacer)
-
 	if pod.Labels == nil {
 		pod.Labels = make(map[string]string)
 	}
-	pod.Labels[r.staggerGroupIDLabel] = group.ID
+	groupID, ok := pod.Labels[r.staggerGroupIDLabel]
+	if !ok {
+		logger.Info("pod does not have group ID label")
+		return reconcile.Result{}, nil
+	}
+	if len(groupID) == 0 {
+		logger.V(1).Info("pod has nil group ID")
+		return reconcile.Result{}, nil
+	}
+
+	group, err := r.classifier.ClassifyByGroupID(groupID, logger)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if group == nil {
+		return reconcile.Result{}, fmt.Errorf("pod group ID not found: %v", groupID)
+	}
+
+	logger.V(1).Info("staggering group", "id", group.ID, "pacer", group.Pacer)
 
 	ready, starting, blocked, err := r.podGroupClassifier.ClassifyPodGroup(ctx, group.ID, logger)
 	if err != nil {

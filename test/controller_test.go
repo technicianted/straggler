@@ -203,6 +203,8 @@ var _ = Describe("Volcano Happy Case Scenario", func() {
 
 			k8sClient, err := client.New(testEnv.Config, client.Options{})
 			Expect(err).ToNot(HaveOccurred())
+			err = volcanov1.AddToScheme(mgr.GetScheme())
+			Expect(err).ToNot(HaveOccurred())
 
 			replicas := int32(10)
 
@@ -276,7 +278,7 @@ var _ = Describe("Volcano Happy Case Scenario", func() {
 				500*time.Millisecond, // interval
 				"All must be pending, expect 1 should be starting", // description
 			)
-
+			fmt.Println("Step 1: 0 ready, 1 starting, 9 blocked")
 			// Make the starting pod ready
 			makePodsReady(ctx, starting)
 
@@ -295,6 +297,7 @@ var _ = Describe("Volcano Happy Case Scenario", func() {
 				"1 pod should be ready, 1 starting, 8 blocked", // description
 			)
 
+			fmt.Println("Step 2: 1 ready, 1 starting, 8 blocked")
 			// Make the starting pods ready
 			makePodsReady(ctx, starting)
 
@@ -472,7 +475,14 @@ func isPodReady(pod *corev1.Pod) bool {
 }
 
 func makePodReady(ctx context.Context, pod *corev1.Pod) {
-	execCommand := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeConfigPath, "exec", "-n", pod.Namespace, pod.Name, "--", "touch", "/tmp/ready")
+	execCommand := exec.CommandContext(
+		ctx,
+		"kubectl",
+		"--kubeconfig", kubeConfigPath,
+		"exec",
+		"-n", pod.Namespace,
+		pod.Name,
+		"--", "touch", "/tmp/ready")
 	out, err := execCommand.CombinedOutput()
 	Expect(err).ToNot(HaveOccurred(), "Output: %s", out)
 }
