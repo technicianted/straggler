@@ -36,9 +36,11 @@ func (p *pacer) Pace(podClassifications types.PodClassification, logger logr.Log
 		return podClassifications.Blocked, nil
 	}
 
-	admittedCount := len(podClassifications.Ready) + len(podClassifications.Starting)
+	readyCount := len(podClassifications.Ready)
+	startingCount := len(podClassifications.Starting)
+	blockedCount := len(podClassifications.Blocked)
 
-	allowedCount := calculateAllowedCount(admittedCount, len(podClassifications.Blocked), p.config.MinInitial, p.config.Multiplier)
+	allowedCount := calculateAllowedCount(readyCount, startingCount, blockedCount, p.config.MinInitial, p.config.Multiplier)
 
 	// Sort the not admitted pods by creation timestamp in ascending order (earlier pods first)
 	sort.Slice(podClassifications.Blocked, func(i, j int) bool {
@@ -47,12 +49,12 @@ func (p *pacer) Pace(podClassifications types.PodClassification, logger logr.Log
 
 	// Slice the sorted pending pods to allow the determined number of pods
 	allowPods := podClassifications.Blocked[:allowedCount]
-	totalAdmittedAfterPacing := admittedCount + len(allowPods)
+	totalAdmittedAfterPacing := readyCount + startingCount + len(allowPods)
 
 	logger.Info("pacing decision",
-		"ready", len(podClassifications.Ready),
-		"starting", len(podClassifications.Starting),
-		"blocked", len(podClassifications.Blocked),
+		"ready", readyCount,
+		"starting", startingCount,
+		"blocked", blockedCount,
 		"admitted", len(allowPods),
 		"totalAdmittedAfterPacing", totalAdmittedAfterPacing,
 	)
@@ -63,49 +65,27 @@ func (p *pacer) String() string {
 	return fmt.Sprintf("%T[%s]: %s", p, p.name, p.key)
 }
 
-// calculateAllowedCount computes the number of pods to admit based on exponential pacing.
-// Parameters:
-// - admittedCount: Total number of currently admitted pods.
-// - notAdmittedPodsCount: Number of pods pending admission.
-// - minInitial: Minimum number of pods to admit initially.
-// - multiplier: Factor by which to exponentially increase the batch size.
-//
-// Returns:
-// - allowedCount: Number of pods allowed to be admitted in the current pacing cycle.
-func calculateAllowedCount(admittedCount, notAdmittedPodsCount, minInitial int, multiplier float64) int {
-	// Start with the minimum initial number of pods allowed
-	allowedCount := minInitial
+func calculateAllowedCount(readyCount, startingCount, blockedCount, minInitial int, multiplier float64) int {
+	// Find the next exponential bucket after the ready count
+	exponent := 0
+	nextTarget := int(float64(minInitial) * math.Pow(multiplier, float64(exponent)))
 
-	if admittedCount > 0 {
-		// Calculate the exponent such that minInitial * multiplier^exponent > admittedCount
-		exponent := math.Floor(math.Log(float64(admittedCount)/float64(minInitial)) / math.Log(multiplier))
-
-		// Ensure exponent is non-negative
-		if exponent < 0 {
-			exponent = 0
-		}
-
-		// Calculate the next target based on the exponent
-		nextTarget := int(float64(minInitial) * math.Pow(multiplier, exponent))
-
-		// If nextTarget <= admittedCount, increment exponent until nextTarget > admittedCount
-		for nextTarget <= admittedCount {
-			exponent++
-			nextTarget = int(float64(minInitial) * math.Pow(multiplier, exponent))
-		}
-
-		// Determine the allowed count as the difference between nextTarget and admittedCount
-		allowedCount = nextTarget - admittedCount
-
-		// Ensure allowedCount is at least minInitial
-		if allowedCount < minInitial {
-			allowedCount = minInitial
-		}
+	for nextTarget <= readyCount {
+		exponent++
+		nextTarget = int(float64(minInitial) * math.Pow(multiplier, float64(exponent)))
 	}
 
-	// Cap allowedCount to notAdmittedPodsCount
-	if allowedCount > notAdmittedPodsCount {
-		allowedCount = notAdmittedPodsCount
+	// Compute the remaining capacity in the bucket after considering starting pods
+	totalAdmitted := readyCount + startingCount
+	allowedCount := nextTarget - totalAdmitted
+
+	if allowedCount < 0 {
+		allowedCount = 0
+	}
+
+	// Cap allowedCount to blockedCount
+	if allowedCount > blockedCount {
+		allowedCount = blockedCount
 	}
 
 	return allowedCount
