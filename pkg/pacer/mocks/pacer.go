@@ -42,18 +42,18 @@ func (m *MockPacer) EXPECT() *MockPacerMockRecorder {
 }
 
 // Pace mocks base method.
-func (m *MockPacer) Pace(readyPods, pendingPods []v1.Pod, logger logr.Logger) ([]v1.Pod, error) {
+func (m *MockPacer) Pace(podClassifications types.PodClassification, logger logr.Logger) ([]v1.Pod, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Pace", readyPods, pendingPods, logger)
+	ret := m.ctrl.Call(m, "Pace", podClassifications, logger)
 	ret0, _ := ret[0].([]v1.Pod)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Pace indicates an expected call of Pace.
-func (mr *MockPacerMockRecorder) Pace(readyPods, pendingPods, logger any) *gomock.Call {
+func (mr *MockPacerMockRecorder) Pace(podClassifications, logger any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pace", reflect.TypeOf((*MockPacer)(nil).Pace), readyPods, pendingPods, logger)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pace", reflect.TypeOf((*MockPacer)(nil).Pace), podClassifications, logger)
 }
 
 // String mocks base method.

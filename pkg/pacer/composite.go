@@ -26,11 +26,11 @@ func NewComposite(id string, pacers []types.Pacer) types.Pacer {
 	}
 }
 
-func (p *composite) Pace(readyPods []corev1.Pod, pendingPods []corev1.Pod, logger logr.Logger) (allowPods []corev1.Pod, err error) {
+func (p *composite) Pace(podClassifications types.PodClassification, logger logr.Logger) (allowPods []corev1.Pod, err error) {
 	// find pods that are allowed by _all_ pacers
 	results := make(map[string]int)
 	for i := range p.pacers {
-		result, err := p.pacers[i].Pace(readyPods, pendingPods, logger)
+		result, err := p.pacers[i].Pace(podClassifications, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -39,7 +39,7 @@ func (p *composite) Pace(readyPods []corev1.Pod, pendingPods []corev1.Pod, logge
 		}
 	}
 	// now find pods that were allowed len(pacers) times
-	for _, pod := range pendingPods {
+	for _, pod := range podClassifications.NotAdmittedPods {
 		if count, ok := results[string(pod.UID)]; ok && count == len(p.pacers) {
 			allowPods = append(allowPods, pod)
 		}

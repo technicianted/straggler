@@ -26,7 +26,8 @@ func New(name string, key string, config Config) *pacer {
 	}
 }
 
-func (p *pacer) Pace(readyPods []corev1.Pod, pendingPods []corev1.Pod, logger logr.Logger) (allowPods []corev1.Pod, err error) {
+// Pace determines which pods are allowed to be admitted based on exponential pacing.
+func (p *pacer) Pace(podClassifications types.PodClassification, logger logr.Logger) (allowPods []corev1.Pod, err error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
