@@ -12,6 +12,12 @@ import (
 
 var _ types.PodBlocker = &stubPod{}
 
+// An implementation of a pod blocker using inifitely sleeping init container.
+// In order to prevent unnecessary image pulls, it also hollows out the
+// images and replace them with own image. Same for volume mounts.
+// The use of sleeping init container marks the pod as both not Ready
+// and in `Init` state as an indication of being staggered.
+// A log line is dropped to also indicate that situation.
 type stubPod struct {
 	containerImage string
 }

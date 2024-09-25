@@ -12,13 +12,13 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	volcanov1 "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 )
 
-/*
 var _ = Describe("Happy Case Scenario", func() {
 	Context("When creating a deployment", func() {
 		It("should create deployment and verify pacing", func() {
@@ -193,7 +193,6 @@ var _ = Describe("Happy Case Scenario", func() {
 		})
 	})
 })
-*/
 
 var _ = Describe("Volcano Happy Case Scenario", func() {
 	Context("When creating a volcano job", func() {
@@ -278,7 +277,7 @@ var _ = Describe("Volcano Happy Case Scenario", func() {
 				500*time.Millisecond, // interval
 				"All must be pending, expect 1 should be starting", // description
 			)
-			fmt.Println("Step 1: 0 ready, 1 starting, 9 blocked")
+
 			// Make the starting pod ready
 			makePodsReady(ctx, starting)
 
@@ -297,7 +296,6 @@ var _ = Describe("Volcano Happy Case Scenario", func() {
 				"1 pod should be ready, 1 starting, 8 blocked", // description
 			)
 
-			fmt.Println("Step 2: 1 ready, 1 starting, 8 blocked")
 			// Make the starting pods ready
 			makePodsReady(ctx, starting)
 
