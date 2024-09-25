@@ -321,6 +321,7 @@ var _ = Describe("Volcano Happy Case Scenario", func() {
 				500*time.Millisecond, // interval
 				"2 pods should be ready, 1 starting, 7 blocked", // description
 			)
+			fmt.Println("Step 3: 2 ready, 2 starting, 6 blocked")
 
 			// Make the starting pods ready
 			makePodsReady(ctx, starting)
@@ -357,6 +358,7 @@ var _ = Describe("Volcano Happy Case Scenario", func() {
 				500*time.Millisecond, // interval
 				"4 pods should be ready, 6 starting, 0 blocked", // description
 			)
+			fmt.Println("Step 5: 10 ready, 0 starting, 0 blocked")
 
 			// Make the starting pods ready
 			makePodsReady(ctx, starting)

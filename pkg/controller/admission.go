@@ -139,7 +139,7 @@ func (a *Admission) handlePodAdmission(ctx context.Context, pod *corev1.Pod, log
 	logger.V(1).Info("will wait for flight tracker", "wait", DefaultFlightWait)
 	flightCTX, cancel := context.WithTimeout(ctx, DefaultFlightWait)
 	defer cancel()
-	err = a.flightTracker.WaitOne(flightCTX, group.ID, logger)
+	err = a.flightTracker.WaitOne(flightCTX, group.ID, pod.ObjectMeta, logger)
 	if err != nil {
 		logger.Info("failed to wait on flight tracker", "error", err)
 	}
@@ -160,12 +160,6 @@ func (a *Admission) handlePodAdmission(ctx context.Context, pod *corev1.Pod, log
 		return fmt.Errorf("failed to pace pod: %v", err)
 	}
 
-	defer func() {
-		err := a.flightTracker.Track(group.ID, pod.ObjectMeta, logger)
-		if err != nil {
-			logger.Info("failed to track pod flight", "error", err)
-		}
-	}()
 	for _, unblockedPod := range unblocked {
 		if unblockedPod.Name == pod.Name &&
 			unblockedPod.Namespace == pod.Namespace &&

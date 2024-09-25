@@ -15,10 +15,6 @@ var _ types.AdmissionFlightTracker = &noopFlightTracker{}
 
 type noopFlightTracker struct{}
 
-func (n *noopFlightTracker) Track(key string, object metav1.ObjectMeta, logger logr.Logger) error {
-	return nil
-}
-
-func (n *noopFlightTracker) WaitOne(ctx context.Context, key string, logger logr.Logger) error {
+func (n *noopFlightTracker) WaitOne(ctx context.Context, key string, object metav1.ObjectMeta, logger logr.Logger) error {
 	return nil
 }

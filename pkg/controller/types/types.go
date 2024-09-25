@@ -61,6 +61,5 @@ type PodClassifierConfigurator interface {
 // race admitted pods and committed pods.
 // It is assumed that it is best effort.
 type AdmissionFlightTracker interface {
-	Track(key string, object metav1.ObjectMeta, logger logr.Logger) error
-	WaitOne(ctx context.Context, key string, logger logr.Logger) error
+	WaitOne(ctx context.Context, key string, object metav1.ObjectMeta, logger logr.Logger) error
 }
