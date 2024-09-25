@@ -23,8 +23,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
-
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var (
@@ -124,7 +122,7 @@ var _ = BeforeSuite(func() {
 	By("bootstrapping test environment")
 
 	Expect(InstallVolcano()).NotTo(HaveOccurred())
-	logf.Log.Info("deployed volcano")
+	logger.Info("deployed volcano")
 
 	testEnv = &envtest.Environment{
 		WebhookInstallOptions: envtest.WebhookInstallOptions{
@@ -153,16 +151,16 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	command, err = setupController(mgr, logf.Log)
+	command, err = setupController(mgr, logger)
 	Expect(err).NotTo(HaveOccurred())
 
 	// log all the server options
-	logf.Log.Info("Webhook server options", "host", webhookInstallOptions.LocalServingHost, "port", webhookInstallOptions.LocalServingPort, "certDir", webhookInstallOptions.LocalServingCertDir)
+	logger.Info("Webhook server options", "host", webhookInstallOptions.LocalServingHost, "port", webhookInstallOptions.LocalServingPort, "certDir", webhookInstallOptions.LocalServingCertDir)
 	Expect(err).NotTo(HaveOccurred())
 
 	go func() {
 		defer GinkgoRecover()
-		err := command.Start(logf.Log)
+		err := command.Start(logger)
 		Expect(err).NotTo(HaveOccurred())
 	}()
 
@@ -175,7 +173,7 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
-	err := command.Stop(logf.Log)
+	err := command.Stop(logger)
 	Expect(err).NotTo(HaveOccurred())
 	By("tearing down the test environment")
 	err = testEnv.Stop()

@@ -102,6 +102,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	// evict all the unblocked pods
 	for _, unblockedPod := range unblocked {
+		logger.V(1).Info("evicting pod to unblocklogf")
 		if err := evictPod(ctx, r.client, &unblockedPod); err != nil {
 			logger.Error(err, "failed to evict pod", "pod", unblockedPod.Name, "namespace", unblockedPod.Namespace)
 		}

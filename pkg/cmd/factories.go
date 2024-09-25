@@ -141,7 +141,7 @@ func RegisterAdmissionController(
 		return fmt.Errorf("failed to watch for pods: %v", err)
 	}
 
-	admission := controller.NewAdmission(
+	admissionController := controller.NewAdmission(
 		classifier,
 		podGroupClassifier,
 		recorderFactory,
@@ -154,7 +154,7 @@ func RegisterAdmissionController(
 	logger.Info("registering admission controller for pods")
 	err = builder.WebhookManagedBy(mgr).
 		For(&corev1.Pod{}).
-		WithDefaulter(admission).
+		WithDefaulter(admissionController).
 		Complete()
 	if err != nil {
 		return fmt.Errorf("failed to register pod admission: %v", err)
@@ -163,7 +163,7 @@ func RegisterAdmissionController(
 	logger.Info("registering admission controller for jobs")
 	err = builder.WebhookManagedBy(mgr).
 		For(&batchv1.Job{}).
-		WithDefaulter(admission).
+		WithDefaulter(admissionController).
 		Complete()
 	if err != nil {
 		return fmt.Errorf("failed to register pod admission: %v", err)

@@ -15,7 +15,7 @@ import (
 )
 
 //go:generate mockgen -package mocks -destination ../mocks/blockers.go -source $GOFILE
-//go:generate mockgen -package mocks -destination ../mocks/client.go sigs.k8s.io/controller-runtime/pkg/client Client
+//go:generate mockgen -package mocks -destination ../mocks/client.go sigs.k8s.io/controller-runtime/pkg/client Client,SubResourceClient
 
 type ObjectRecorder interface {
 	Normalf(reason, format string, args ...interface{})

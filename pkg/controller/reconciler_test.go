@@ -274,20 +274,24 @@ func TestReconcile_SuccessfulReconciliation(t *testing.T) {
 			{ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "blocked-pod"}},
 		}, nil)
 
+	mockSubresourceClient := mocks.NewMockSubResourceClient(ctrl)
+	mockClient.EXPECT().SubResource("eviction").Return(mockSubresourceClient)
 	// Expect Create to be called for eviction
-	mockClient.
+	mockSubresourceClient.
 		EXPECT().
 		Create(
 			gomock.Any(), // ctx
 			gomock.Any(), // obj
+			gomock.Any(), // subresource
 			gomock.Any(), // opts (variadic)
 		).
-		DoAndReturn(func(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
-			evict, ok := obj.(*policyv1.Eviction)
+		DoAndReturn(func(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.CreateOption) error {
+			pod, ok := obj.(*corev1.Pod)
 			assert.True(t, ok)
-			assert.Equal(t, "blocked-pod", evict.Name)
-			assert.Equal(t, "default", evict.Namespace)
+			assert.Equal(t, "blocked-pod", pod.Name)
+			assert.Equal(t, "default", pod.Namespace)
 			// Check GracePeriodSeconds
+			evict := subResource.(*policyv1.Eviction)
 			if evict.DeleteOptions == nil || evict.DeleteOptions.GracePeriodSeconds == nil {
 				t.Errorf("GracePeriodSeconds is nil")
 			} else {

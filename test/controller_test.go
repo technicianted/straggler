@@ -429,6 +429,7 @@ func waitForPodsConditionAndReturnStartingPods(
 	Eventually(func() bool {
 		ready, starting, blocked, err := getPodCounts(ctx, k8sClient, namespace, labels)
 		Expect(err).ToNot(HaveOccurred())
+		fmt.Printf("ready: %d, starting: %d, blocked: %d\n", len(ready), len(starting), len(blocked))
 		if len(ready) != expectedReady || len(starting) != expectedStarting || len(blocked) != expectedBlocked {
 			return false
 		}
