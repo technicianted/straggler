@@ -98,6 +98,13 @@ Special handling is needed for pods created by a Job controller. By default, Job
 
 Yes. It can even span multiple namespaces.
 
+* **How do I know if a pod is being staggered?
+
+If a pod is being staggered awaiting pacing, it will have label `v1.straggler.technicianted/staggered=1` set. You can list these pods using something like:
+```bash
+$ kubectl get pods -l v1.straggler.technicianted/staggered=1
+```
+
 * **How are pods prevented from starting up (staggered)?**
 
 Straggler works by monitoring pods via an admission controller. With each new pods, it is evaluated against defined policies. Once it is associated with one, its pacer is consulted to see if it should be allowed to start. If it is not, a special pod specs are replaced with stub specs with same resources. Further, an init container is appended that will block the startup of the pod. When the reconciler is ready, the pod is evicted and restarted with its original specs.
