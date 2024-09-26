@@ -186,6 +186,21 @@ func (mr *MockPodClassifierMockRecorder) Classify(podMeta, podSpec, logger any) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Classify", reflect.TypeOf((*MockPodClassifier)(nil).Classify), podMeta, podSpec, logger)
 }
 
+// ClassifyByGroupID mocks base method.
+func (m *MockPodClassifier) ClassifyByGroupID(groupID string, logger logr.Logger) (*types0.PodClassification, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClassifyByGroupID", groupID, logger)
+	ret0, _ := ret[0].(*types0.PodClassification)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ClassifyByGroupID indicates an expected call of ClassifyByGroupID.
+func (mr *MockPodClassifierMockRecorder) ClassifyByGroupID(groupID, logger any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClassifyByGroupID", reflect.TypeOf((*MockPodClassifier)(nil).ClassifyByGroupID), groupID, logger)
+}
+
 // MockPodGroupStandingClassifier is a mock of PodGroupStandingClassifier interface.
 type MockPodGroupStandingClassifier struct {
 	ctrl     *gomock.Controller

@@ -16,6 +16,16 @@ $ # build docker image
 $ make docker-build
 ```
 
+### Running
+Simplest way is to use the helm chart. Edit the file `configs/_policies.yaml` to define your staggering policies then install the helm chart:
+```bash
+$ helm upgrade \
+  --install \
+  --namespace stagger \
+  --create-namespace 
+  stagger helm/stagger
+```
+
 ### Example
 Consider the following example where we want to stagger access to image pulls such that something like [spegel](https://github.com/spegel-org/spegel) gets a chance to seed the images. We want to control staggering per image, not as a whole for cache population and seeding:
 ```yaml
@@ -71,11 +81,6 @@ spec:
 
 In some situations where a staggering policy spans multiple pods controlled by different Kubernets controllers, we may want to bypass staggering for a certain set of these pods due to subtle startup dependencies. To do that, policies include `BypassLabelSelector` that lets you specify a label selector that if matched, this policy will not apply but the pod itself will be counted against pacing.
 
-### How it works
-Stagger works by monitoring pods via an admission controller. With each new pods, it is evaluated against defined policies. Once it is associated with one, its pacer is consulted to see if it should be allowed to start. If it is not, a special `nodeSelector` is added to block its scheduling.
-
-Next, a reconciler controller monitors pods events and status changes. With each change of a staggered pod, its corresponding pacer is consulted. If it is allowed to start, the pod is evicted and will be recreated where the admission controller will let it be scheduled.
-
 ### Job controllers special handling
 Special handling is needed for pods created by a Job controller. By default, Job controllers do not differentiate between an evicted pod and a failed one. Since we use pod eviction to reschedule the pod, Job specs need to be changed to inject the following failure policy:
 ```yaml
@@ -87,3 +92,18 @@ Special handling is needed for pods created by a Job controller. By default, Job
 ```
 
 **Note: if your Job spec already has a `DisruptionTarget` policy with `action` not set to `Ignore`, stagger will issue a warning and will not apply policies**
+
+### FAQ
+* Can a single stagger group span multiple controllers?
+Yes. It can even span multiple namespaces.
+
+* How are pods prevented from starting up (staggered)?
+Stagger works by monitoring pods via an admission controller. With each new pods, it is evaluated against defined policies. Once it is associated with one, its pacer is consulted to see if it should be allowed to start. If it is not, a special pod specs are replaced with stub specs with same resources. Further, an init container is appended that will block the startup of the pod. When the reconciler is ready, the pod is evicted and restarted with its original specs.
+
+Next, a reconciler controller monitors pods events and status changes. With each change of a staggered pod, its corresponding pacer is consulted. If it is allowed to start, the pod is evicted and will be recreated where the admission controller will let it be scheduled.
+
+* Why not use `scale` subresource?
+One of the important design objectives is to be controller agnostic, and be able to stagger across multiple controllers. If `scale` subresource is used as a mechanism of staggering then it'll pose many restrictions. For example, the owning controller must support `scale`. Also other controllers such as HPA may be already controlling the `scale` subresource and will conflict with staggering.
+
+* What about gang scheduling?
+Gang scheduling blocks the scheduling of a group of pods until all requested resources are ready. Stagger handles this by using an init container to block the startup of the pod such that gang schedulers are not affected.

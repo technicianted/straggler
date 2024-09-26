@@ -4,8 +4,9 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
-	"stagger/pkg/blocker"
+	"stagger/pkg/cmd"
 	"stagger/pkg/controller"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	volcanov1 "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 )
 
 var _ = Describe("Happy Case Scenario", func() {
@@ -78,6 +80,186 @@ var _ = Describe("Happy Case Scenario", func() {
 			ctx := context.Background()
 			err = k8sClient.Create(ctx, deployment)
 			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(func() {
+				zero := int64(0)
+				k8sClient.Delete(context.Background(), deployment, &client.DeleteOptions{GracePeriodSeconds: &zero})
+			})
+
+			labels := map[string]string{"app": "test-app"}
+
+			// Step 1: 0 ready, 1 starting, 9 blocked
+			starting := waitForPodsConditionAndReturnStartingPods(
+				ctx,
+				k8sClient,
+				Namespace,
+				labels,
+				0,                    // expectedReady
+				1,                    // expectedStarting
+				9,                    // expectedBlocked
+				"busybox",            // containerName
+				time.Minute,          // timeout
+				500*time.Millisecond, // interval
+				"All must be pending, expect 1 should be starting", // description
+			)
+
+			// Make the starting pod ready
+			makePodsReady(ctx, starting)
+
+			// Step 2: 1 ready, 1 starting, 8 blocked
+			starting = waitForPodsConditionAndReturnStartingPods(
+				ctx,
+				k8sClient,
+				Namespace,
+				labels,
+				1,                    // expectedReady
+				1,                    // expectedStarting
+				8,                    // expectedBlocked
+				"busybox",            // containerName
+				time.Minute,          // timeout
+				500*time.Millisecond, // interval
+				"1 pod should be ready, 1 starting, 8 blocked", // description
+			)
+
+			// Make the starting pods ready
+			makePodsReady(ctx, starting)
+
+			// Step 3: 2 ready, 2 starting, 6 blocked
+			starting = waitForPodsConditionAndReturnStartingPods(
+				ctx,
+				k8sClient,
+				Namespace,
+				labels,
+				2,                    // expectedReady
+				2,                    // expectedStarting
+				6,                    // expectedBlocked
+				"busybox",            // containerName
+				time.Minute,          // timeout
+				500*time.Millisecond, // interval
+				"2 pods should be ready, 2 starting, 6 blocked", // description
+			)
+
+			// Make the starting pods ready
+			makePodsReady(ctx, starting)
+
+			// Step 4: 4 ready, 4 starting, 2 blocked
+			starting = waitForPodsConditionAndReturnStartingPods(
+				ctx,
+				k8sClient,
+				Namespace,
+				labels,
+				4,                    // expectedReady
+				4,                    // expectedStarting
+				2,                    // expectedBlocked
+				"busybox",            // containerName
+				time.Minute,          // timeout
+				500*time.Millisecond, // interval
+				"4 pods should be ready, 4 starting, 2 blocked", // description
+			)
+
+			// Make the starting pods ready
+			makePodsReady(ctx, starting)
+
+			// Step 5: 10 ready, 0 starting, 0 blocked
+			starting = waitForPodsConditionAndReturnStartingPods(
+				ctx,
+				k8sClient,
+				Namespace,
+				labels,
+				8,                    // expectedReady
+				2,                    // expectedStarting
+				0,                    // expectedBlocked
+				"busybox",            // containerName
+				time.Minute,          // timeout
+				500*time.Millisecond, // interval
+				"8 pods should be ready, 2 starting, 0 blocked", // description
+			)
+
+			makePodsReady(ctx, starting)
+
+			// Step 6: 10 ready, 0 starting, 0 blocked
+			waitForPodsConditionAndReturnStartingPods(
+				ctx,
+				k8sClient,
+				Namespace,
+				labels,
+				10,                        // expectedReady
+				0,                         // expectedStarting
+				0,                         // expectedBlocked
+				"busybox",                 // containerName
+				time.Minute,               // timeout
+				500*time.Millisecond,      // interval
+				"10 pods should be ready", // description
+			)
+		})
+	})
+})
+
+var _ = Describe("Volcano Happy Case Scenario", func() {
+	Context("When creating a volcano job", func() {
+		It("should create volcano job and verify pacing", func() {
+			// Create a job with the StaggerGroup label
+			jobName := "test-volcano-job"
+
+			k8sClient, err := client.New(testEnv.Config, client.Options{})
+			Expect(err).ToNot(HaveOccurred())
+			err = volcanov1.AddToScheme(mgr.GetScheme())
+			Expect(err).ToNot(HaveOccurred())
+
+			replicas := int32(10)
+
+			logger.Info("Creating the volcano job", "name", jobName, "namespace", Namespace)
+			job := &volcanov1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      jobName,
+					Namespace: Namespace,
+				},
+				Spec: volcanov1.JobSpec{
+					MinAvailable:  replicas,
+					SchedulerName: "volcano",
+					Tasks: []volcanov1.TaskSpec{
+						{
+							Replicas: replicas,
+							Name:     "task1",
+							Template: corev1.PodTemplateSpec{
+								ObjectMeta: metav1.ObjectMeta{
+									Labels: map[string]string{
+										"app":                         "test-app",
+										controller.DefaultEnableLabel: "1",
+									},
+								},
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{
+											Name:    "busybox",
+											Image:   "busybox",
+											Command: []string{"sleep", "3600"},
+											ReadinessProbe: &corev1.Probe{
+												ProbeHandler: corev1.ProbeHandler{
+													Exec: &corev1.ExecAction{
+														Command: []string{
+															// check if the file /tmp/ready exists
+															"test", "-f", "/tmp/ready",
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			By("Creating volcano job")
+			ctx := context.Background()
+			err = k8sClient.Create(ctx, job)
+			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(func() {
+				zero := int64(0)
+				k8sClient.Delete(context.Background(), job, &client.DeleteOptions{GracePeriodSeconds: &zero})
+			})
 
 			labels := map[string]string{"app": "test-app"}
 
@@ -195,7 +377,11 @@ func getPodCounts(ctx context.Context, c client.Client, namespace string, labelS
 		client.MatchingLabels(labelSelector),
 	}
 
-	blocker := blocker.NewNodeSelectorPodBlocker()
+	blocker, err := cmd.NewBlocker(cmd.NewOptions())
+	if err != nil {
+		err = fmt.Errorf("failed to create blocker: %v", err)
+		return
+	}
 
 	pods := &corev1.PodList{}
 	err = c.List(ctx, pods, listOpts...)
@@ -241,6 +427,7 @@ func waitForPodsConditionAndReturnStartingPods(
 	Eventually(func() bool {
 		ready, starting, blocked, err := getPodCounts(ctx, k8sClient, namespace, labels)
 		Expect(err).ToNot(HaveOccurred())
+		fmt.Printf("ready: %d, starting: %d, blocked: %d\n", len(ready), len(starting), len(blocked))
 		if len(ready) != expectedReady || len(starting) != expectedStarting || len(blocked) != expectedBlocked {
 			return false
 		}
@@ -287,7 +474,14 @@ func isPodReady(pod *corev1.Pod) bool {
 }
 
 func makePodReady(ctx context.Context, pod *corev1.Pod) {
-	execCommand := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeConfigPath, "exec", "-n", pod.Namespace, pod.Name, "--", "touch", "/tmp/ready")
+	execCommand := exec.CommandContext(
+		ctx,
+		"kubectl",
+		"--kubeconfig", kubeConfigPath,
+		"exec",
+		"-n", pod.Namespace,
+		pod.Name,
+		"--", "touch", "/tmp/ready")
 	out, err := execCommand.CombinedOutput()
 	Expect(err).ToNot(HaveOccurred(), "Output: %s", out)
 }

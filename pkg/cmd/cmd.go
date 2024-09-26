@@ -31,7 +31,11 @@ func NewCMDWithManager(mgr manager.Manager, options Options, logger logr.Logger)
 		return nil, err
 	}
 
-	podGroupClassifier, err := NewPodgroupClassifier(mgr, logger)
+	blocker, err := NewBlocker(options)
+	if err != nil {
+		return nil, err
+	}
+	podGroupClassifier, err := NewPodgroupClassifier(mgr, blocker, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -59,6 +63,7 @@ func NewCMDWithManager(mgr manager.Manager, options Options, logger logr.Logger)
 		options,
 		matchPredicate,
 		mgr,
+		blocker,
 		classifier,
 		podGroupClassifier,
 		recorderFactory,
@@ -113,10 +118,12 @@ func (c *CMD) Start(logger logr.Logger) error {
 func (c *CMD) Stop(logger logr.Logger) error {
 	logger.Info("shutting down")
 
-	c.shutdownContextCancel()
-	logger.Info("waiting for shutdown")
-	<-c.shutdownCompleteChan
-	logger.Info("shutdown completed")
+	if c.shutdownCompleteChan != nil {
+		c.shutdownContextCancel()
+		logger.Info("waiting for shutdown")
+		<-c.shutdownCompleteChan
+		logger.Info("shutdown completed")
+	}
 
 	return nil
 }

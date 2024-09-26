@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"stagger/pkg/blocker"
+	blockertypes "stagger/pkg/blocker/types"
 	"stagger/pkg/config/types"
 	"stagger/pkg/controller"
 	controllertypes "stagger/pkg/controller/types"
@@ -105,8 +106,10 @@ func NewGroupClassifier(policies []StaggeringPolicy, logger logr.Logger) (contro
 	return classifier, nil
 }
 
-func NewPodgroupClassifier(mgr manager.Manager, logger logr.Logger) (controllertypes.PodGroupStandingClassifier, error) {
-	return controller.NewPodGroupStandingClassifier(mgr.GetClient(), blocker.NewNodeSelectorPodBlocker()), nil
+func NewPodgroupClassifier(mgr manager.Manager, blocker blockertypes.PodBlocker, logger logr.Logger) (controllertypes.PodGroupStandingClassifier, error) {
+	return controller.NewPodGroupStandingClassifier(
+		mgr.GetClient(),
+		blocker), nil
 }
 
 func NewRecorderFactory(logger logr.Logger) (controllertypes.ObjectRecorderFactory, error) {
@@ -117,6 +120,7 @@ func RegisterAdmissionController(
 	options Options,
 	matchPredicate predicate.Predicate,
 	mgr manager.Manager,
+	blocker blockertypes.PodBlocker,
 	classifier controllertypes.PodClassifier,
 	podGroupClassifier controllertypes.PodGroupStandingClassifier,
 	recorderFactory controllertypes.ObjectRecorderFactory,
@@ -137,11 +141,11 @@ func RegisterAdmissionController(
 		return fmt.Errorf("failed to watch for pods: %v", err)
 	}
 
-	admission := controller.NewAdmission(
+	admissionController := controller.NewAdmission(
 		classifier,
 		podGroupClassifier,
 		recorderFactory,
-		blocker.NewNodeSelectorPodBlocker(),
+		blocker,
 		flightTracker,
 		options.BypassFailure,
 		options.EnableLabel,
@@ -150,7 +154,7 @@ func RegisterAdmissionController(
 	logger.Info("registering admission controller for pods")
 	err = builder.WebhookManagedBy(mgr).
 		For(&corev1.Pod{}).
-		WithDefaulter(admission).
+		WithDefaulter(admissionController).
 		Complete()
 	if err != nil {
 		return fmt.Errorf("failed to register pod admission: %v", err)
@@ -159,7 +163,7 @@ func RegisterAdmissionController(
 	logger.Info("registering admission controller for jobs")
 	err = builder.WebhookManagedBy(mgr).
 		For(&batchv1.Job{}).
-		WithDefaulter(admission).
+		WithDefaulter(admissionController).
 		Complete()
 	if err != nil {
 		return fmt.Errorf("failed to register pod admission: %v", err)
@@ -225,4 +229,12 @@ func CreateKubernetesConfig(opts KubernetesOptions) (*rest.Config, error) {
 	}
 
 	return config, err
+}
+
+func NewBlocker(opts Options) (blockertypes.PodBlocker, error) {
+	if len(opts.StaggerContainerImage) == 0 {
+		return nil, fmt.Errorf("stagger container image must be specified")
+	}
+
+	return blocker.NewStubPod(opts.StaggerContainerImage), nil
 }

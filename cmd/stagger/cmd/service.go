@@ -1,9 +1,7 @@
-package cmd
-
-//
 // Copyright (c) stagger team and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
-//
+package cmd
+
 import (
 	"os"
 	"os/signal"

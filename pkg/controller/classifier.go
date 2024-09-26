@@ -45,8 +45,9 @@ type groupEntry struct {
 type podClassifier struct {
 	sync.Mutex
 
-	configs    map[string]configEntry
-	groupsByID *cache.Cache
+	configs     map[string]configEntry
+	configNames []string
+	groupsByID  *cache.Cache
 	// TODO: keys can theoritically by deuplicate across configs
 	pacersByKey *cache.Cache
 }
@@ -55,6 +56,7 @@ type podClassifier struct {
 func NewPodClassifier() *podClassifier {
 	return &podClassifier{
 		configs:     make(map[string]configEntry),
+		configNames: make([]string, 0),
 		groupsByID:  cache.New(30*time.Minute, 1*time.Minute),
 		pacersByKey: cache.New(30*time.Minute, 1*time.Minute),
 	}
@@ -73,6 +75,7 @@ func (c *podClassifier) AddConfig(config configtypes.StaggerGroup, logger logr.L
 		return err
 	}
 	c.configs[entry.Name] = entry
+	c.configNames = append(c.configNames, entry.Name)
 
 	return nil
 }
@@ -86,6 +89,13 @@ func (c *podClassifier) RemoveConfig(name string, logger logr.Logger) error {
 	}
 
 	delete(c.configs, name)
+	newNames := make([]string, 0)
+	for _, n := range c.configNames {
+		if n != name {
+			newNames = append(newNames, n)
+		}
+	}
+	c.configNames = newNames
 
 	return nil
 }
@@ -119,7 +129,7 @@ func (c *podClassifier) Classify(podMeta metav1.ObjectMeta, podSpec corev1.PodSp
 		Spec:       podSpec,
 	}
 
-	for name := range c.configs {
+	for _, name := range c.configNames {
 		config := c.configs[name]
 		if !config.selector.Matches(labels.Set(dummyPod.Labels)) {
 			logger.V(1).Info("skipping config due to label selector", "name", name)
@@ -173,6 +183,19 @@ func (c *podClassifier) Classify(podMeta metav1.ObjectMeta, podSpec corev1.PodSp
 	}
 
 	if group != nil {
+		return &types.PodClassification{
+			ID:    group.id,
+			Pacer: group.compositePacer,
+		}, nil
+	}
+
+	return nil, nil
+}
+
+func (c *podClassifier) ClassifyByGroupID(groupID string, logger logr.Logger) (*types.PodClassification, error) {
+	g, ok := c.groupsByID.Get(groupID)
+	if ok {
+		group := g.(*groupEntry)
 		return &types.PodClassification{
 			ID:    group.id,
 			Pacer: group.compositePacer,

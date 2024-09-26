@@ -10,10 +10,10 @@ import (
 	"testing"
 
 	"github.com/foxcpp/go-mockdns"
-	"github.com/onsi/ginkgo/v2"
+	"github.com/go-logr/zapr"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/e2e-framework/pkg/env"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/envfuncs"
@@ -36,9 +36,13 @@ func setupTestDnsServer(zones map[string]mockdns.Zone) func() {
 }
 
 func TestMain(m *testing.M) {
+	zlogConfig := zap.NewDevelopmentConfig()
 	// zlog's log levels are -1*(logr log levels). Ref: https://pkg.go.dev/github.com/go-logr/zapr#hdr-Implementation_Details
-	logger = zap.New(zap.WriteTo(ginkgo.GinkgoWriter), zap.UseDevMode(true), zap.Level(zapcore.Level(-100)))
+	zlogConfig.Level = zap.NewAtomicLevelAt(zapcore.Level(-100))
+	zlog, _ := zlogConfig.Build()
+	logger = zapr.NewLogger(zlog)
 	logf.SetLogger(logger)
+	logf.Log = logger
 
 	// only do this on mac
 	// check is os is darwin
@@ -61,13 +65,19 @@ func TestMain(m *testing.M) {
 
 	kindEnv, _ := env.NewFromFlags()
 	kindClusterName := envconf.RandomName("kind", 16)
+	kubeConfig, err := os.CreateTemp("", "stagger-kind")
+	if err != nil {
+		logger.Info("failed to create temp configfile", "error", err)
+		os.Exit(1)
+	}
+	kubeConfig.Close()
+	os.Setenv("KUBECONFIG", kubeConfig.Name())
 
 	kindEnv.Setup(
 		envfuncs.CreateCluster(kind.NewProvider(), kindClusterName),
 		func(ctx context.Context, c *envconf.Config) (context.Context, error) {
 			kubeConfigPath = c.KubeconfigFile()
 			os.Setenv("USE_EXISTING_CLUSTER", "true")
-			os.Setenv("KUBECONFIG", kubeConfigPath)
 			logger.Info("To import the kubeconfig, run the following command", "command", "export KUBECONFIG="+kubeConfigPath)
 			return ctx, nil
 		},
