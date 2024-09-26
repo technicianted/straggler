@@ -98,7 +98,7 @@ Special handling is needed for pods created by a Job controller. By default, Job
 
 Yes. It can even span multiple namespaces.
 
-* **How do I know if a pod is being staggered?
+* **How do I know if a pod is being staggered?**
 
 If a pod is being staggered awaiting pacing, it will have label `v1.straggler.technicianted/staggered=1` set. You can list these pods using something like:
 ```bash
