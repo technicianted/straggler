@@ -1,4 +1,4 @@
-// Copyright (c) stagger team and contributors. All rights reserved.
+// Copyright (c) straggler team and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 package test
 
@@ -16,7 +16,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"stagger/pkg/cmd"
+	"straggler/pkg/cmd"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"

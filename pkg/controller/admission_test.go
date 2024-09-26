@@ -1,4 +1,4 @@
-// Copyright (c) stagger team and contributors. All rights reserved.
+// Copyright (c) straggler team and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 package controller
 
@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	blockermocks "stagger/pkg/blocker/mocks"
-	"stagger/pkg/controller/mocks"
-	"stagger/pkg/controller/types"
-	pacermocks "stagger/pkg/pacer/mocks"
+	blockermocks "straggler/pkg/blocker/mocks"
+	"straggler/pkg/controller/mocks"
+	"straggler/pkg/controller/types"
+	pacermocks "straggler/pkg/pacer/mocks"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"

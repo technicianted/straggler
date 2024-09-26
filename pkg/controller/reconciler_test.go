@@ -1,4 +1,4 @@
-// Copyright (c) stagger team and contributors. All rights reserved.
+// Copyright (c) straggler team and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 package controller
 
@@ -7,9 +7,9 @@ import (
 	"errors"
 	"testing"
 
-	"stagger/pkg/controller/mocks"
-	"stagger/pkg/controller/types"
-	pacertypes "stagger/pkg/pacer/types"
+	"straggler/pkg/controller/mocks"
+	"straggler/pkg/controller/types"
+	pacertypes "straggler/pkg/pacer/types"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	pacermockes "stagger/pkg/pacer/mocks"
+	pacermockes "straggler/pkg/pacer/mocks"
 )
 
 func setupTest(t *testing.T) (*Reconciler, *mocks.MockClient, *mocks.MockPodClassifier, *mocks.MockPodGroupStandingClassifier, *gomock.Controller) {

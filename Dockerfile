@@ -1,5 +1,5 @@
 FROM scratch
 
-ADD bin/stagger /
+ADD bin/straggler /
 
-ENTRYPOINT [ "/stagger" ]
+ENTRYPOINT [ "/straggler" ]

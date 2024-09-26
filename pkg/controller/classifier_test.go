@@ -1,10 +1,10 @@
-// Copyright (c) stagger team and contributors. All rights reserved.
+// Copyright (c) straggler team and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 package controller
 
 import (
-	"stagger/pkg/config/types"
-	"stagger/pkg/pacer/mocks"
+	"straggler/pkg/config/types"
+	"straggler/pkg/pacer/mocks"
 	"testing"
 
 	"github.com/go-logr/zapr"

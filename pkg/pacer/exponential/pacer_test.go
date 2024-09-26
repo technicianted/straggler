@@ -1,4 +1,4 @@
-// Copyright (c) stagger team and contributors. All rights reserved.
+// Copyright (c) straggler team and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 package exponential
 
@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"stagger/pkg/pacer/types"
+	"straggler/pkg/pacer/types"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"

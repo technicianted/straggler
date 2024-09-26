@@ -11,7 +11,7 @@ package mocks
 
 import (
 	reflect "reflect"
-	types "stagger/pkg/pacer/types"
+	types "straggler/pkg/pacer/types"
 
 	logr "github.com/go-logr/logr"
 	gomock "go.uber.org/mock/gomock"

@@ -1,9 +1,9 @@
-// Copyright (c) stagger team and contributors. All rights reserved.
+// Copyright (c) straggler team and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 package controller
 
 import (
-	"stagger/pkg/controller/types"
+	"straggler/pkg/controller/types"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"

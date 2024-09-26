@@ -13,7 +13,7 @@ spec:
     metadata:
       labels:
         app: slow-deployment
-        v1.stagger.technicianted/enable: "1"
+        v1.straggler.technicianted/enable: "1"
         staggerimages: "1"
     spec:
       containers:

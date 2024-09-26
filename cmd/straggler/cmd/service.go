@@ -1,12 +1,12 @@
-// Copyright (c) stagger team and contributors. All rights reserved.
+// Copyright (c) straggler team and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 package cmd
 
 import (
 	"os"
 	"os/signal"
-	"stagger/pkg/cmd"
-	"stagger/pkg/version"
+	"straggler/pkg/cmd"
+	"straggler/pkg/version"
 	"syscall"
 
 	"github.com/spf13/cobra"
@@ -29,7 +29,7 @@ func init() {
 
 func runService(command *cobra.Command, args []string) {
 	logger := SetupTelemetryAndLogging()
-	logger.Info("starting stagger service", "version", version.Build, "options", options)
+	logger.Info("starting straggler service", "version", version.Build, "options", options)
 
 	service, err := cmd.NewCMD(options, logger)
 	if err != nil {

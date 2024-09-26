@@ -1,12 +1,12 @@
-// Copyright (c) stagger team and contributors. All rights reserved.
+// Copyright (c) straggler team and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 package types
 
 import (
 	"context"
 
-	configtypes "stagger/pkg/config/types"
-	pacertypes "stagger/pkg/pacer/types"
+	configtypes "straggler/pkg/config/types"
+	pacertypes "straggler/pkg/pacer/types"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"

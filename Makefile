@@ -19,7 +19,7 @@ ENVTEST ?= $(LOCALBIN)/setup-envtest
 
 VERSION		   ?= latest
 IMAGE_REGISTRY ?= technicianted
-IMAGE_FULL = $(IMAGE_REGISTRY)/stagger:$(VERSION)
+IMAGE_FULL = $(IMAGE_REGISTRY)/straggler:$(VERSION)
 
 ARCH       		?=amd64
 CGO        		?=0
@@ -45,13 +45,13 @@ GO_BUILD_VARS=CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH) GOPRIVATE=$(GO
 binaries:
 	rm -rf bin/ > /dev/null 2>&1
 	mkdir bin/
-	$(GO_BUILD_VARS) go build -ldflags "-X stagger/pkg/version.Build=$(BUILD_VERSION)" -o bin/stagger ./cmd/stagger/
+	$(GO_BUILD_VARS) go build -ldflags "-X straggler/pkg/version.Build=$(BUILD_VERSION)" -o bin/straggler ./cmd/straggler/
 
 docker-build: binaries
-	docker build . -t stagger
+	docker build . -t straggler
 
 docker-push: docker-build
-	docker tag stagger ${IMAGE_FULL}
+	docker tag straggler ${IMAGE_FULL}
 	docker push ${IMAGE_FULL}
 
 gen:

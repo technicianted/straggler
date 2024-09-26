@@ -1,6 +1,6 @@
 {{- $webhooks := get (.Files.Get  "manifests/manifests.yaml" | fromYaml) "webhooks" }}
 {{- $serviceName := include "stagger.fullname" .}}
-{{- $p := dict "certificateCN" (printf "%s.%s" $serviceName .Release.Namespace) "certificateValidityDays" .Values.stagger.admission.cert.validityDays }}
+{{- $p := dict "certificateCN" (printf "%s.%s" $serviceName .Release.Namespace) "certificateValidityDays" .Values.straggler.admission.cert.validityDays }}
 {{- template "gen-selfsigned" $p }}
 {{- $certificate := (b64enc $p.certificate) }}
 {{- $privateKey := (b64enc $p.privateKey) }}
@@ -20,11 +20,11 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: {{ include "stagger.fullname" . }}-pods
 webhooks:
-  - name: {{ .Values.stagger.admission.webhookName }}-pods
+  - name: {{ .Values.straggler.admission.webhookName }}-pods
     failurePolicy: Ignore
     objectSelector:
       matchExpressions:
-      - key: {{ .Values.stagger.admission.enableLabel }}
+      - key: {{ .Values.straggler.admission.enableLabel }}
         operator: Exists
     clientConfig:
       service:
@@ -53,11 +53,11 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: {{ include "stagger.fullname" . }}-jobs
 webhooks:
-  - name: {{ .Values.stagger.admission.webhookName }}-jobs
+  - name: {{ .Values.straggler.admission.webhookName }}-jobs
     failurePolicy: Ignore
     objectSelector:
       matchExpressions:
-      - key: {{ .Values.stagger.admission.enableLabel }}
+      - key: {{ .Values.straggler.admission.enableLabel }}
         operator: Exists
     clientConfig:
       service:
@@ -125,10 +125,10 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
           - service
-          - --log-verbosity={{ .Values.stagger.logVerbosity }}
+          - --log-verbosity={{ .Values.straggler.logVerbosity }}
           - --staggering-config-path=/etc/staggering/configs/policies.yaml
           - --tls-dir=/etc/staggering/tls
-          - --health-probe-bind-address=:{{ .Values.stagger.healthProbePort }}
+          - --health-probe-bind-address=:{{ .Values.straggler.healthProbePort }}
           volumeMounts:
           - name: configs
             mountPath: /etc/staggering/configs
@@ -141,7 +141,7 @@ spec:
               containerPort: {{ .Values.service.port }}
               protocol: TCP
             - name: health
-              containerPort: {{ .Values.stagger.healthProbePort }}
+              containerPort: {{ .Values.straggler.healthProbePort }}
               protocol: TCP
           livenessProbe:
             {{- toYaml .Values.livenessProbe | nindent 12 }}

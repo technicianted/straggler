@@ -1,12 +1,12 @@
-// Copyright (c) stagger team and contributors. All rights reserved.
+// Copyright (c) straggler team and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 package cmd
 
 import (
 	"net/http"
 
-	"stagger/pkg/metrics"
-	"stagger/pkg/version"
+	"straggler/pkg/metrics"
+	"straggler/pkg/version"
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
@@ -36,7 +36,7 @@ var (
 			Namespace: metrics.Namespace,
 			Subsystem: "build",
 			Name:      "info",
-			Help:      "stagger build info",
+			Help:      "straggler build info",
 		},
 		[]string{"version"})
 )

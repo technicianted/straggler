@@ -1,4 +1,4 @@
-// Copyright (c) stagger team and contributors. All rights reserved.
+// Copyright (c) straggler team and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 package controller
 
@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
-	configtypes "stagger/pkg/config/types"
-	"stagger/pkg/controller/types"
-	"stagger/pkg/pacer"
-	pacertypes "stagger/pkg/pacer/types"
+	configtypes "straggler/pkg/config/types"
+	"straggler/pkg/controller/types"
+	"straggler/pkg/pacer"
+	pacertypes "straggler/pkg/pacer/types"
 
 	"github.com/go-logr/logr"
 	"github.com/ohler55/ojg/jp"

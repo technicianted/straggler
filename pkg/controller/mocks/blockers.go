@@ -12,8 +12,8 @@ package mocks
 import (
 	context "context"
 	reflect "reflect"
-	types "stagger/pkg/config/types"
-	types0 "stagger/pkg/controller/types"
+	types "straggler/pkg/config/types"
+	types0 "straggler/pkg/controller/types"
 
 	logr "github.com/go-logr/logr"
 	gomock "go.uber.org/mock/gomock"

@@ -1,11 +1,11 @@
-// Copyright (c) stagger team and contributors. All rights reserved.
+// Copyright (c) straggler team and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 package cmd
 
 import (
 	"os"
 	"os/signal"
-	"stagger/pkg/version"
+	"straggler/pkg/version"
 	"syscall"
 
 	"github.com/spf13/cobra"
@@ -23,7 +23,7 @@ func init() {
 
 func runContainer(command *cobra.Command, args []string) {
 	logger := SetupTelemetryAndLogging()
-	logger.Info("starting stagger container", "version", version.Build, "options", options)
+	logger.Info("starting straggler container", "version", version.Build, "options", options)
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)

@@ -1,18 +1,18 @@
-stagger:
+straggler:
   logVerbosity: 10
 
   healthProbePort: 80
   
   admission:
-    enableLabel: v1.stagger.technicianted/enable
+    enableLabel: v1.straggler.technicianted/enable
     cert:
       validityDays: 365
-    webhookName: v1.stagger.technicianted
+    webhookName: v1.straggler.technicianted
 
 replicaCount: 3
 
 image:
-  repository: technicianted/stagger
+  repository: technicianted/straggler
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
   tag: latest

@@ -1,4 +1,4 @@
-module stagger
+module straggler
 
 go 1.22.3
 

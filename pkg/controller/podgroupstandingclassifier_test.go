@@ -1,4 +1,4 @@
-// Copyright (c) stagger team and contributors. All rights reserved.
+// Copyright (c) straggler team and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 package controller
 
@@ -7,7 +7,7 @@ import (
 	"errors"
 	"testing"
 
-	blockermocks "stagger/pkg/blocker/mocks"
+	blockermocks "straggler/pkg/blocker/mocks"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"stagger/pkg/controller/mocks"
+	"straggler/pkg/controller/mocks"
 )
 
 func newPodCondition(conditionType corev1.PodConditionType, status corev1.ConditionStatus) corev1.PodCondition {

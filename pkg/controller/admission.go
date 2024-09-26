@@ -1,4 +1,4 @@
-// Copyright (c) stagger team and contributors. All rights reserved.
+// Copyright (c) straggler team and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 package controller
 
@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"time"
 
-	blockertypes "stagger/pkg/blocker/types"
-	"stagger/pkg/controller/types"
-	pacertypes "stagger/pkg/pacer/types"
+	blockertypes "straggler/pkg/blocker/types"
+	"straggler/pkg/controller/types"
+	pacertypes "straggler/pkg/pacer/types"
 
 	"github.com/go-logr/logr"
 	batchv1 "k8s.io/api/batch/v1"
@@ -21,9 +21,9 @@ import (
 )
 
 var (
-	DefaultEnableLabel         = "v1.stagger.technicianted/enable"
-	DefaultStaggerGroupIDLabel = "v1.stagger.technicianted/group"
-	DefaultJobPodLabel         = "v1.stagger.technicianted/jobPod"
+	DefaultEnableLabel         = "v1.straggler.technicianted/enable"
+	DefaultStaggerGroupIDLabel = "v1.straggler.technicianted/group"
+	DefaultJobPodLabel         = "v1.straggler.technicianted/jobPod"
 	DefaultFlightWait          = 500 * time.Millisecond
 )
 

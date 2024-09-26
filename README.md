@@ -1,11 +1,11 @@
-Stagger - A pod staggering controller
+Straggler - A pod staggering controller
 ---
 
-Stagger is an in-cluster controller that can be used to stagger starting of pods across multiple namespaces and controllers in order to control thundering herd effects in large-scale systems.
+Straggler is an in-cluster controller that can be used to straggler starting of pods across multiple namespaces and controllers in order to control thundering herd effects in large-scale systems.
 
 A typical scenario is where large number of pods need to be created rapidly. This typically puts pressure on resources as all of them rush to do things like image pulls, data downloads and even pressure the API server.
 
-Stagger provides multiple staggering policies. Policies define matching pods, a grouping key and a pacer. Pods are matched using label selectors. A grouping key is a jsonpath expression that gets applied to pod specs. They key places all pods in a single staggering group. Finally, each staggering group has a defined pacer that controls how fast the pods are started.
+Straggler provides multiple staggering policies. Policies define matching pods, a grouping key and a pacer. Pods are matched using label selectors. A grouping key is a jsonpath expression that gets applied to pod specs. They key places all pods in a single staggering group. Finally, each staggering group has a defined pacer that controls how fast the pods are started.
 
 ### Building
 
@@ -21,13 +21,13 @@ Simplest way is to use the helm chart. Edit the file `configs/_policies.yaml` to
 ```bash
 $ helm upgrade \
   --install \
-  --namespace stagger \
+  --namespace straggler \
   --create-namespace 
-  stagger helm/stagger
+  straggler helm/straggler
 ```
 
 ### Example
-Consider the following example where we want to stagger access to image pulls such that something like [spegel](https://github.com/spegel-org/spegel) gets a chance to seed the images. We want to control staggering per image, not as a whole for cache population and seeding:
+Consider the following example where we want to straggler access to image pulls such that something like [spegel](https://github.com/spegel-org/spegel) gets a chance to seed the images. We want to control staggering per image, not as a whole for cache population and seeding:
 ```yaml
 staggeringPolicies:
 # create a staggering policy to control image pulls.
@@ -66,7 +66,7 @@ spec:
       labels:
         app: nginx
         # enable staggering for pods created by this controller.
-        v1.stagger.technicianted/enable: "1"
+        v1.straggler.technicianted/enable: "1"
         # enable image staggering policy.
         staggerimages: "1"
     spec:
@@ -91,19 +91,19 @@ Special handling is needed for pods created by a Job controller. By default, Job
       - type: DisruptionTarget
 ```
 
-**Note: if your Job spec already has a `DisruptionTarget` policy with `action` not set to `Ignore`, stagger will issue a warning and will not apply policies**
+**Note: if your Job spec already has a `DisruptionTarget` policy with `action` not set to `Ignore`, straggler will issue a warning and will not apply policies**
 
 ### FAQ
-* Can a single stagger group span multiple controllers?
+* Can a single straggler group span multiple controllers?
 Yes. It can even span multiple namespaces.
 
 * How are pods prevented from starting up (staggered)?
-Stagger works by monitoring pods via an admission controller. With each new pods, it is evaluated against defined policies. Once it is associated with one, its pacer is consulted to see if it should be allowed to start. If it is not, a special pod specs are replaced with stub specs with same resources. Further, an init container is appended that will block the startup of the pod. When the reconciler is ready, the pod is evicted and restarted with its original specs.
+Straggler works by monitoring pods via an admission controller. With each new pods, it is evaluated against defined policies. Once it is associated with one, its pacer is consulted to see if it should be allowed to start. If it is not, a special pod specs are replaced with stub specs with same resources. Further, an init container is appended that will block the startup of the pod. When the reconciler is ready, the pod is evicted and restarted with its original specs.
 
 Next, a reconciler controller monitors pods events and status changes. With each change of a staggered pod, its corresponding pacer is consulted. If it is allowed to start, the pod is evicted and will be recreated where the admission controller will let it be scheduled.
 
 * Why not use `scale` subresource?
-One of the important design objectives is to be controller agnostic, and be able to stagger across multiple controllers. If `scale` subresource is used as a mechanism of staggering then it'll pose many restrictions. For example, the owning controller must support `scale`. Also other controllers such as HPA may be already controlling the `scale` subresource and will conflict with staggering.
+One of the important design objectives is to be controller agnostic, and be able to straggler across multiple controllers. If `scale` subresource is used as a mechanism of staggering then it'll pose many restrictions. For example, the owning controller must support `scale`. Also other controllers such as HPA may be already controlling the `scale` subresource and will conflict with staggering.
 
 * What about gang scheduling?
-Gang scheduling blocks the scheduling of a group of pods until all requested resources are ready. Stagger handles this by using an init container to block the startup of the pod such that gang schedulers are not affected.
+Gang scheduling blocks the scheduling of a group of pods until all requested resources are ready. Straggler handles this by using an init container to block the startup of the pod such that gang schedulers are not affected.

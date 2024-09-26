@@ -1,4 +1,4 @@
-// Copyright (c) stagger team and contributors. All rights reserved.
+// Copyright (c) straggler team and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 package test
 
@@ -6,8 +6,8 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
-	"stagger/pkg/cmd"
-	"stagger/pkg/controller"
+	"straggler/pkg/cmd"
+	"straggler/pkg/controller"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"

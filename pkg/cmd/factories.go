@@ -1,17 +1,17 @@
-// Copyright (c) stagger team and contributors. All rights reserved.
+// Copyright (c) straggler team and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 package cmd
 
 import (
 	"fmt"
 	"net/http"
-	"stagger/pkg/blocker"
-	blockertypes "stagger/pkg/blocker/types"
-	"stagger/pkg/config/types"
-	"stagger/pkg/controller"
-	controllertypes "stagger/pkg/controller/types"
-	"stagger/pkg/pacer/exponential"
-	pacertypes "stagger/pkg/pacer/types"
+	"straggler/pkg/blocker"
+	blockertypes "straggler/pkg/blocker/types"
+	"straggler/pkg/config/types"
+	"straggler/pkg/controller"
+	controllertypes "straggler/pkg/controller/types"
+	"straggler/pkg/pacer/exponential"
+	pacertypes "straggler/pkg/pacer/types"
 
 	"github.com/go-logr/logr"
 	batchv1 "k8s.io/api/batch/v1"
@@ -233,7 +233,7 @@ func CreateKubernetesConfig(opts KubernetesOptions) (*rest.Config, error) {
 
 func NewBlocker(opts Options) (blockertypes.PodBlocker, error) {
 	if len(opts.StaggerContainerImage) == 0 {
-		return nil, fmt.Errorf("stagger container image must be specified")
+		return nil, fmt.Errorf("straggler container image must be specified")
 	}
 
 	return blocker.NewStubPod(opts.StaggerContainerImage), nil

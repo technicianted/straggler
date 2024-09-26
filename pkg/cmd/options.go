@@ -1,10 +1,10 @@
-// Copyright (c) stagger team and contributors. All rights reserved.
+// Copyright (c) straggler team and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 package cmd
 
 import (
 	"os"
-	"stagger/pkg/controller"
+	"straggler/pkg/controller"
 	"time"
 
 	"k8s.io/client-go/rest"
@@ -30,7 +30,7 @@ type Options struct {
 	KubernetesOptions
 
 	StaggeringConfigPath   string        `cliArgName:"staggering-config-path" cliArgDescription:"path to staggering config yaml file" cliArgGroup:"Staggering"`
-	StaggerContainerImage  string        `cliArgName:"staggering-container-image" cliArgDescription:"stagger container image to use for stub pods" cliArgGroup:"Staggering"`
+	StaggerContainerImage  string        `cliArgName:"staggering-container-image" cliArgDescription:"straggler container image to use for stub pods" cliArgGroup:"Staggering"`
 	BypassFailure          bool          `cliArgName:"staggering-bypass-errors" cliArgDescription:"do not block admission on errors" cliArgGroup:"Staggering"`
 	EnableLabel            string        `cliArgName:"staggering-enable-label" cliArgDescription:"pod label to enable staggering behavior" cliArgGroup:"Staggering"`
 	MaxFlightDuration      time.Duration `cliArgName:"staggering-max-pod-flight-duration" cliArgDescription:"maximum time to wait for a pod from admission to reconciliation after which it is assumed committed" cliArgGroup:"Staggering"`
