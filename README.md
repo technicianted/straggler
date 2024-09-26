@@ -10,7 +10,7 @@ Straggler provides multiple staggering policies. Policies define matching pods, 
 ### Building
 
 ```bash
-$ # build binaries only in bin/stagger
+$ # build binaries only in bin/straggler
 $ make binaries
 $ # build docker image
 $ make docker-build
@@ -94,16 +94,20 @@ Special handling is needed for pods created by a Job controller. By default, Job
 **Note: if your Job spec already has a `DisruptionTarget` policy with `action` not set to `Ignore`, straggler will issue a warning and will not apply policies**
 
 ### FAQ
-* Can a single straggler group span multiple controllers?
+* **Can a single straggler group span multiple controllers?**
+
 Yes. It can even span multiple namespaces.
 
-* How are pods prevented from starting up (staggered)?
+* **How are pods prevented from starting up (staggered)?**
+
 Straggler works by monitoring pods via an admission controller. With each new pods, it is evaluated against defined policies. Once it is associated with one, its pacer is consulted to see if it should be allowed to start. If it is not, a special pod specs are replaced with stub specs with same resources. Further, an init container is appended that will block the startup of the pod. When the reconciler is ready, the pod is evicted and restarted with its original specs.
 
 Next, a reconciler controller monitors pods events and status changes. With each change of a staggered pod, its corresponding pacer is consulted. If it is allowed to start, the pod is evicted and will be recreated where the admission controller will let it be scheduled.
 
-* Why not use `scale` subresource?
+* **Why not use `scale` subresource?**
+
 One of the important design objectives is to be controller agnostic, and be able to straggler across multiple controllers. If `scale` subresource is used as a mechanism of staggering then it'll pose many restrictions. For example, the owning controller must support `scale`. Also other controllers such as HPA may be already controlling the `scale` subresource and will conflict with staggering.
 
-* What about gang scheduling?
+* **What about gang scheduling?**
+
 Gang scheduling blocks the scheduling of a group of pods until all requested resources are ready. Straggler handles this by using an init container to block the startup of the pod such that gang schedulers are not affected.
