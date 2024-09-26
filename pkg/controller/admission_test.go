@@ -69,7 +69,10 @@ func TestAdmissionPodAdmissionBlocking(t *testing.T) {
 	err := admission.Default(context.Background(), &pod)
 	require.NoError(t, err)
 	// check group label
+	require.Contains(t, pod.Labels, DefaultStaggerGroupIDLabel)
 	require.Equal(t, "testid", pod.Labels[DefaultStaggerGroupIDLabel])
+	require.Contains(t, pod.Labels, DefaultStaggeredPodLabel)
+	require.Equal(t, "1", pod.Labels[DefaultStaggeredPodLabel])
 
 	// allow pod. we expect the group label but not blocking
 	pod = corev1.Pod{
@@ -86,7 +89,8 @@ func TestAdmissionPodAdmissionBlocking(t *testing.T) {
 	}, nil)
 	err = admission.Default(context.Background(), &pod)
 	require.NoError(t, err)
-	// check group label
+	// check group label.
+	require.Contains(t, pod.Labels, DefaultStaggerGroupIDLabel)
 	require.Equal(t, "testid", pod.Labels[DefaultStaggerGroupIDLabel])
 
 	// test classifier returning nil group

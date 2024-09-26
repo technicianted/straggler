@@ -23,6 +23,7 @@ import (
 var (
 	DefaultEnableLabel         = "v1.straggler.technicianted/enable"
 	DefaultStaggerGroupIDLabel = "v1.straggler.technicianted/group"
+	DefaultStaggeredPodLabel   = "v1.straggler.technicianted/staggered"
 	DefaultJobPodLabel         = "v1.straggler.technicianted/jobPod"
 	DefaultFlightWait          = 500 * time.Millisecond
 )
@@ -175,6 +176,8 @@ func (a *Admission) handlePodAdmission(ctx context.Context, pod *corev1.Pod, log
 	}
 
 	logger.Info("pacer will not allow pod")
+	pod.Labels[DefaultStaggeredPodLabel] = "1"
+
 	return a.blockPod(pod, logger)
 }
 
