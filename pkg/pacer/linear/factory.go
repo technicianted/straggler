@@ -1,6 +1,6 @@
 // Copyright (c) straggler team and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
-package exponential
+package linear
 
 import "straggler/pkg/pacer/types"
 
