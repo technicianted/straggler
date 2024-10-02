@@ -21,7 +21,7 @@ type pacer struct {
 	config Config
 }
 
-func New(name string, key string, config Config) *pacer {
+func New(key string, config Config) *pacer {
 	return &pacer{
 		key:    key,
 		config: config,
@@ -32,7 +32,7 @@ func New(name string, key string, config Config) *pacer {
 func (p *pacer) Pace(podClassifications types.PodClassification, logger logr.Logger) ([]corev1.Pod, error) {
 	// Enforce MaxStagger limit
 	if len(podClassifications.Ready) >= p.config.MaxStagger {
-		logger.Info("MaxStagger limit reached, admitting all pending pods")
+		logger.V(1).Info("MaxStagger limit reached, admitting all pending pods")
 		return podClassifications.Blocked, nil
 	}
 

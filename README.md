@@ -22,7 +22,7 @@ Simplest way is to use the helm chart. Edit the file `configs/_policies.yaml` to
 $ helm upgrade \
   --install \
   --namespace straggler \
-  --create-namespace 
+  --create-namespace \
   straggler helm/straggler
 ```
 

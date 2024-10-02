@@ -31,7 +31,7 @@ func TestPace_SortsByCreationTimestamp(t *testing.T) {
 		MaxStagger: 100,
 	}
 
-	p := New("test-pacer", "test-key", config)
+	p := New("test-key", config)
 
 	// Create pods with different creation timestamps
 	now := metav1.Now()
@@ -200,7 +200,7 @@ func TestPace(t *testing.T) {
 			startingPods := generatePods(tt.startingCount, "starting")
 			blockedPods := generatePods(tt.blockedCount, "blocked")
 
-			pacer := New("test-pacer", "test-key", config)
+			pacer := New("test-key", config)
 			allowed, err := pacer.Pace(types.PodClassification{
 				Ready:    readyPods,
 				Starting: startingPods,

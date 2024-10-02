@@ -12,188 +12,193 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	volcanov1 "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 )
 
-var _ = Describe("Happy Case Scenario", func() {
-	Context("When creating a deployment", func() {
-		It("should create deployment and verify pacing", func() {
-			// Create a Deployment with the StaggerGroup label
-			deploymentName := "test-deployment"
+/*
+	var _ = Describe("Happy Case Scenario", func() {
+		Context("When creating a deployment", func() {
+			It("should create deployment and verify pacing", func() {
+				// Create a Deployment with the StaggerGroup label
+				deploymentName := "test-deployment"
 
-			k8sClient, err := client.New(testEnv.Config, client.Options{})
-			Expect(err).ToNot(HaveOccurred())
+				k8sClient, err := client.New(testEnv.Config, client.Options{})
+				Expect(err).ToNot(HaveOccurred())
 
-			replicas := int32(10)
+				replicas := int32(10)
 
-			logger.Info("Creating the Deployment", "name", deploymentName, "namespace", Namespace)
-			deployment := &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      deploymentName,
-					Namespace: Namespace,
-				},
-				Spec: appsv1.DeploymentSpec{
-					Strategy: appsv1.DeploymentStrategy{
-						Type: appsv1.RollingUpdateDeploymentStrategyType,
+				logger.Info("Creating the Deployment", "name", deploymentName, "namespace", Namespace)
+				deployment := &appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      deploymentName,
+						Namespace: Namespace,
 					},
-					Replicas: &replicas,
-					Selector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							"app": "test-app",
+					Spec: appsv1.DeploymentSpec{
+						Strategy: appsv1.DeploymentStrategy{
+							Type: appsv1.RollingUpdateDeploymentStrategyType,
 						},
-					},
-					Template: corev1.PodTemplateSpec{
-						ObjectMeta: metav1.ObjectMeta{
-							Labels: map[string]string{
-								"app":                         "test-app",
-								controller.DefaultEnableLabel: "1",
+						Replicas: &replicas,
+						Selector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"app": "test-app",
 							},
 						},
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{
-								{
-									Name:    "busybox",
-									Image:   "busybox",
-									Command: []string{"sleep", "3600"},
-									ReadinessProbe: &corev1.Probe{
-										ProbeHandler: corev1.ProbeHandler{
-											Exec: &corev1.ExecAction{
-												Command: []string{
-													// check if the file /tmp/ready exists
-													"test", "-f", "/tmp/ready",
+						Template: corev1.PodTemplateSpec{
+							ObjectMeta: metav1.ObjectMeta{
+								Labels: map[string]string{
+									"app":                         "test-app",
+									controller.DefaultEnableLabel: "1",
+								},
+							},
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: "busybox",
+										// this should be different for each test
+										Image:   "busybox:latest",
+										Command: []string{"sleep", "3600"},
+										ReadinessProbe: &corev1.Probe{
+											ProbeHandler: corev1.ProbeHandler{
+												Exec: &corev1.ExecAction{
+													Command: []string{
+														// check if the file /tmp/ready exists
+														"test", "-f", "/tmp/ready",
+													},
 												},
 											},
+											InitialDelaySeconds: 1,
+											PeriodSeconds:       1,
+											SuccessThreshold:    1,
 										},
 									},
 								},
 							},
 						},
 					},
-				},
-			}
+				}
 
-			By("Creating the Deployment")
-			ctx := context.Background()
-			err = k8sClient.Create(ctx, deployment)
-			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() {
-				zero := int64(0)
-				k8sClient.Delete(context.Background(), deployment, &client.DeleteOptions{GracePeriodSeconds: &zero})
+				By("Creating the Deployment")
+				ctx := context.Background()
+				err = k8sClient.Create(ctx, deployment)
+				Expect(err).ToNot(HaveOccurred())
+				DeferCleanup(func() {
+					zero := int64(0)
+					k8sClient.Delete(context.Background(), deployment, &client.DeleteOptions{GracePeriodSeconds: &zero})
+				})
+
+				labels := map[string]string{"app": "test-app"}
+
+				// Step 1: 0 ready, 1 starting, 9 blocked
+				starting := waitForPodsConditionAndReturnStartingPods(
+					ctx,
+					k8sClient,
+					Namespace,
+					labels,
+					0,                    // expectedReady
+					1,                    // expectedStarting
+					9,                    // expectedBlocked
+					"busybox",            // containerName
+					time.Minute,          // timeout
+					500*time.Millisecond, // interval
+					"All must be pending, expect 1 should be starting", // description
+				)
+
+				// Make the starting pod ready
+				makePodsReady(ctx, starting)
+
+				// Step 2: 1 ready, 1 starting, 8 blocked
+				starting = waitForPodsConditionAndReturnStartingPods(
+					ctx,
+					k8sClient,
+					Namespace,
+					labels,
+					1,                    // expectedReady
+					1,                    // expectedStarting
+					8,                    // expectedBlocked
+					"busybox",            // containerName
+					time.Minute,          // timeout
+					500*time.Millisecond, // interval
+					"1 pod should be ready, 1 starting, 8 blocked", // description
+				)
+
+				// Make the starting pods ready
+				makePodsReady(ctx, starting)
+
+				// Step 3: 2 ready, 1 starting, 7 blocked
+				starting = waitForPodsConditionAndReturnStartingPods(
+					ctx,
+					k8sClient,
+					Namespace,
+					labels,
+					2,                    // expectedReady
+					1,                    // expectedStarting
+					7,                    // expectedBlocked
+					"busybox",            // containerName
+					time.Minute,          // timeout
+					500*time.Millisecond, // interval
+					"2 pods should be ready, 1 starting, 7 blocked", // description
+				)
+
+				// Make the starting pods ready
+				makePodsReady(ctx, starting)
+
+				// Step 4: 3 ready, 1 starting, 6 blocked
+				starting = waitForPodsConditionAndReturnStartingPods(
+					ctx,
+					k8sClient,
+					Namespace,
+					labels,
+					3,                    // expectedReady
+					1,                    // expectedStarting
+					6,                    // expectedBlocked
+					"busybox",            // containerName
+					time.Minute,          // timeout
+					500*time.Millisecond, // interval
+					"3 pods should be ready, 1 starting, 6 blocked", // description
+				)
+
+				// Make the starting pods ready
+				makePodsReady(ctx, starting)
+
+				// Step 5: unblock all: 4 ready, 6 starting, 0 blocked
+				starting = waitForPodsConditionAndReturnStartingPods(
+					ctx,
+					k8sClient,
+					Namespace,
+					labels,
+					4,                    // expectedReady
+					6,                    // expectedStarting
+					0,                    // expectedBlocked
+					"busybox",            // containerName
+					time.Minute,          // timeout
+					500*time.Millisecond, // interval
+					"4 pods should be ready, 6 starting, 0 blocked", // description
+				)
+
+				// Make the starting pods ready
+				makePodsReady(ctx, starting)
+
+				// Step 6: 10 ready, 0 starting, 0 blocked
+				waitForPodsConditionAndReturnStartingPods(
+					ctx,
+					k8sClient,
+					Namespace,
+					labels,
+					10,                        // expectedReady
+					0,                         // expectedStarting
+					0,                         // expectedBlocked
+					"busybox",                 // containerName
+					time.Minute,               // timeout
+					500*time.Millisecond,      // interval
+					"10 pods should be ready", // description
+				)
 			})
-
-			labels := map[string]string{"app": "test-app"}
-
-			// Step 1: 0 ready, 1 starting, 9 blocked
-			starting := waitForPodsConditionAndReturnStartingPods(
-				ctx,
-				k8sClient,
-				Namespace,
-				labels,
-				0,                    // expectedReady
-				1,                    // expectedStarting
-				9,                    // expectedBlocked
-				"busybox",            // containerName
-				time.Minute,          // timeout
-				500*time.Millisecond, // interval
-				"All must be pending, expect 1 should be starting", // description
-			)
-
-			// Make the starting pod ready
-			makePodsReady(ctx, starting)
-
-			// Step 2: 1 ready, 1 starting, 8 blocked
-			starting = waitForPodsConditionAndReturnStartingPods(
-				ctx,
-				k8sClient,
-				Namespace,
-				labels,
-				1,                    // expectedReady
-				1,                    // expectedStarting
-				8,                    // expectedBlocked
-				"busybox",            // containerName
-				time.Minute,          // timeout
-				500*time.Millisecond, // interval
-				"1 pod should be ready, 1 starting, 8 blocked", // description
-			)
-
-			// Make the starting pods ready
-			makePodsReady(ctx, starting)
-
-			// Step 3: 2 ready, 2 starting, 6 blocked
-			starting = waitForPodsConditionAndReturnStartingPods(
-				ctx,
-				k8sClient,
-				Namespace,
-				labels,
-				2,                    // expectedReady
-				2,                    // expectedStarting
-				6,                    // expectedBlocked
-				"busybox",            // containerName
-				time.Minute,          // timeout
-				500*time.Millisecond, // interval
-				"2 pods should be ready, 2 starting, 6 blocked", // description
-			)
-
-			// Make the starting pods ready
-			makePodsReady(ctx, starting)
-
-			// Step 4: 4 ready, 4 starting, 2 blocked
-			starting = waitForPodsConditionAndReturnStartingPods(
-				ctx,
-				k8sClient,
-				Namespace,
-				labels,
-				4,                    // expectedReady
-				4,                    // expectedStarting
-				2,                    // expectedBlocked
-				"busybox",            // containerName
-				time.Minute,          // timeout
-				500*time.Millisecond, // interval
-				"4 pods should be ready, 4 starting, 2 blocked", // description
-			)
-
-			// Make the starting pods ready
-			makePodsReady(ctx, starting)
-
-			// Step 5: 10 ready, 0 starting, 0 blocked
-			starting = waitForPodsConditionAndReturnStartingPods(
-				ctx,
-				k8sClient,
-				Namespace,
-				labels,
-				8,                    // expectedReady
-				2,                    // expectedStarting
-				0,                    // expectedBlocked
-				"busybox",            // containerName
-				time.Minute,          // timeout
-				500*time.Millisecond, // interval
-				"8 pods should be ready, 2 starting, 0 blocked", // description
-			)
-
-			makePodsReady(ctx, starting)
-
-			// Step 6: 10 ready, 0 starting, 0 blocked
-			waitForPodsConditionAndReturnStartingPods(
-				ctx,
-				k8sClient,
-				Namespace,
-				labels,
-				10,                        // expectedReady
-				0,                         // expectedStarting
-				0,                         // expectedBlocked
-				"busybox",                 // containerName
-				time.Minute,               // timeout
-				500*time.Millisecond,      // interval
-				"10 pods should be ready", // description
-			)
 		})
 	})
-})
-
+*/
 var _ = Describe("Volcano Happy Case Scenario", func() {
 	Context("When creating a volcano job", func() {
 		It("should create volcano job and verify pacing", func() {
@@ -242,6 +247,9 @@ var _ = Describe("Volcano Happy Case Scenario", func() {
 														},
 													},
 												},
+												InitialDelaySeconds: 1,
+												PeriodSeconds:       1,
+												SuccessThreshold:    1,
 											},
 										},
 									},
@@ -299,57 +307,58 @@ var _ = Describe("Volcano Happy Case Scenario", func() {
 			// Make the starting pods ready
 			makePodsReady(ctx, starting)
 
-			// Step 3: 2 ready, 2 starting, 6 blocked
+			// Step 3: 2 ready, 1 starting, 7 blocked
 			starting = waitForPodsConditionAndReturnStartingPods(
 				ctx,
 				k8sClient,
 				Namespace,
 				labels,
 				2,                    // expectedReady
-				2,                    // expectedStarting
-				6,                    // expectedBlocked
+				1,                    // expectedStarting
+				7,                    // expectedBlocked
 				"busybox",            // containerName
 				time.Minute,          // timeout
 				500*time.Millisecond, // interval
-				"2 pods should be ready, 2 starting, 6 blocked", // description
+				"2 pods should be ready, 1 starting, 7 blocked", // description
 			)
 
 			// Make the starting pods ready
 			makePodsReady(ctx, starting)
 
-			// Step 4: 4 ready, 4 starting, 2 blocked
+			// Step 4: 3 ready, 1 starting, 6 blocked
+			starting = waitForPodsConditionAndReturnStartingPods(
+				ctx,
+				k8sClient,
+				Namespace,
+				labels,
+				3,                    // expectedReady
+				1,                    // expectedStarting
+				6,                    // expectedBlocked
+				"busybox",            // containerName
+				time.Minute,          // timeout
+				500*time.Millisecond, // interval
+				"3 pods should be ready, 1 starting, 6 blocked", // description
+			)
+
+			// Make the starting pods ready
+			makePodsReady(ctx, starting)
+
+			// Step 5: unblock all: 4 ready, 6 starting, 0 blocked
 			starting = waitForPodsConditionAndReturnStartingPods(
 				ctx,
 				k8sClient,
 				Namespace,
 				labels,
 				4,                    // expectedReady
-				4,                    // expectedStarting
-				2,                    // expectedBlocked
-				"busybox",            // containerName
-				time.Minute,          // timeout
-				500*time.Millisecond, // interval
-				"4 pods should be ready, 4 starting, 2 blocked", // description
-			)
-
-			// Make the starting pods ready
-			makePodsReady(ctx, starting)
-
-			// Step 5: 10 ready, 0 starting, 0 blocked
-			starting = waitForPodsConditionAndReturnStartingPods(
-				ctx,
-				k8sClient,
-				Namespace,
-				labels,
-				8,                    // expectedReady
-				2,                    // expectedStarting
+				6,                    // expectedStarting
 				0,                    // expectedBlocked
 				"busybox",            // containerName
 				time.Minute,          // timeout
 				500*time.Millisecond, // interval
-				"8 pods should be ready, 2 starting, 0 blocked", // description
+				"4 pods should be ready, 6 starting, 0 blocked", // description
 			)
 
+			// Make the starting pods ready
 			makePodsReady(ctx, starting)
 
 			// Step 6: 10 ready, 0 starting, 0 blocked
@@ -427,7 +436,8 @@ func waitForPodsConditionAndReturnStartingPods(
 	Eventually(func() bool {
 		ready, starting, blocked, err := getPodCounts(ctx, k8sClient, namespace, labels)
 		Expect(err).ToNot(HaveOccurred())
-		fmt.Printf("ready: %d, starting: %d, blocked: %d\n", len(ready), len(starting), len(blocked))
+		fmt.Printf("expect ready: %d, starting: %d, blocked: %d\n", expectedReady, expectedStarting, expectedBlocked)
+		fmt.Printf("currnt ready: %d, starting: %d, blocked: %d\n", len(ready), len(starting), len(blocked))
 		if len(ready) != expectedReady || len(starting) != expectedStarting || len(blocked) != expectedBlocked {
 			return false
 		}

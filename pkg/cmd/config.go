@@ -15,8 +15,14 @@ type ExponentialPacer struct {
 	Multiplier *float64
 }
 
+type LinearPacer struct {
+	MaxStagger *int
+	Step       *int
+}
+
 type Pacer struct {
 	Exponential *ExponentialPacer
+	Linear      *LinearPacer
 }
 
 type StaggeringPolicy struct {

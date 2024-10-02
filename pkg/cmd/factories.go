@@ -11,6 +11,7 @@ import (
 	"straggler/pkg/controller"
 	controllertypes "straggler/pkg/controller/types"
 	"straggler/pkg/pacer/exponential"
+	"straggler/pkg/pacer/linear"
 	pacertypes "straggler/pkg/pacer/types"
 
 	"github.com/go-logr/logr"
@@ -74,9 +75,14 @@ func NewPacerFactory(policy StaggeringPolicy, logger logr.Logger) (pacertypes.Pa
 			Multiplier: *policy.Pacer.Exponential.Multiplier,
 		}
 		logger.Info("creating exponential pacer", "policy", policy.Name, "config", config)
-		return exponential.NewFactory(
-			policy.Name,
-			config), nil
+		return exponential.NewFactory(config), nil
+	case policy.Pacer.Linear != nil:
+		config := linear.Config{
+			MaxStagger: *policy.Pacer.Linear.MaxStagger,
+			Step:       *policy.Pacer.Linear.Step,
+		}
+		logger.Info("creating exponential pacer", "policy", policy.Name, "config", config)
+		return linear.NewFactory(config), nil
 	default:
 		return nil, fmt.Errorf("no pacer configuration specified")
 	}
