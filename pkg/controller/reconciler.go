@@ -132,10 +132,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	// if our pod wasn't unblocked then check for policies.
 	policyMaxDuration := group.GroupPolicies.MaxBlockedDuration
 	// apply max blocked policy.
-	if policyMaxDuration > 0 {
+	var durationUntilUnblock time.Duration
+	if policyMaxDuration > 0 && !pod.CreationTimestamp.IsZero() {
 		timeSinceCreation := time.Since(pod.CreationTimestamp.Time)
 		logger.V(1).Info("checking MaxBlockedDuration", "maxDuration", policyMaxDuration, "creationDuration", timeSinceCreation)
-		if timeSinceCreation > policyMaxDuration {
+		durationUntilUnblock = policyMaxDuration - timeSinceCreation
+		if durationUntilUnblock <= 0 {
 			logger.Info("blocked pod exceeded policy duration", "maxDuration", policyMaxDuration)
 			if err := evictPod(ctx, r.client, pod); client.IgnoreNotFound(err) != nil {
 				logger.Error(err, "failed to evict pod", "pod", pod.Name, "namespace", pod.Namespace)
@@ -146,12 +148,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}
 
-	// if a max blocking time specified then we need to resync nased on that.
+	// if a max blocking time specified then we need to resync based on that.
 	resync := r.blockedPodResyncDuration
-	if group.GroupPolicies.MaxBlockedDuration > 0 {
+	if group.GroupPolicies.MaxBlockedDuration > 0 && durationUntilUnblock > 0 {
 		resync = time.Duration(math.Min(
 			float64(resync),
-			float64(group.GroupPolicies.MaxBlockedDuration/2.0)))
+			float64(durationUntilUnblock)))
 	}
 	return reconcile.Result{
 		RequeueAfter: resync,
