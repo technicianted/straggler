@@ -117,4 +117,4 @@ One of the important design objectives is to be controller agnostic, and be able
 
 * **What about gang scheduling?**
 
-Gang scheduling blocks the scheduling of a group of pods until all requested resources are ready. Straggler handles this by using an init container to block the startup of the pod such that gang schedulers are not affected.
+Gang scheduling blocks the scheduling of a group of pods until all requested resources are ready. Straggler handles this by using an init container to block the startup of the pod such that gang schedulers are not affected. However some orchestrators like Volcano do not have a good way to tolerate pod evictions, which is what straggler uses to unblock the pods.
