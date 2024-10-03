@@ -5,6 +5,9 @@ package controller
 import (
 	"context"
 	"fmt"
+	"math"
+	"time"
+
 	"straggler/pkg/controller/types"
 	pacertypes "straggler/pkg/pacer/types"
 
@@ -12,18 +15,24 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apitypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+var (
+	DefaultBlockedPodResyncDuration = 1 * time.Minute
+)
+
 // Continuously monitor pod changes and make sure that pacers
 // are updated.
 type Reconciler struct {
-	client             client.Client
-	classifier         types.PodClassifier
-	podGroupClassifier types.PodGroupStandingClassifier
+	client                   client.Client
+	classifier               types.PodClassifier
+	podGroupClassifier       types.PodGroupStandingClassifier
+	blockedPodResyncDuration time.Duration
 
 	enableLabel         string
 	staggerGroupIDLabel string
@@ -33,9 +42,10 @@ var _ reconcile.Reconciler = &Reconciler{}
 
 func NewReconciler(client client.Client, classifier types.PodClassifier, podGroupClassifier types.PodGroupStandingClassifier) *Reconciler {
 	return &Reconciler{
-		client:             client,
-		classifier:         classifier,
-		podGroupClassifier: podGroupClassifier,
+		client:                   client,
+		classifier:               classifier,
+		podGroupClassifier:       podGroupClassifier,
+		blockedPodResyncDuration: DefaultBlockedPodResyncDuration,
 
 		enableLabel:         DefaultEnableLabel,
 		staggerGroupIDLabel: DefaultStaggerGroupIDLabel,
@@ -64,6 +74,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	if pod.Labels == nil {
 		pod.Labels = make(map[string]string)
+	}
+	if _, ok := pod.Labels[DefaultStaggeredPodLabel]; !ok {
+		logger.V(1).Info("pod does is not staggered")
+		return reconcile.Result{}, nil
 	}
 	groupID, ok := pod.Labels[r.staggerGroupIDLabel]
 	if !ok {
@@ -100,15 +114,49 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return reconcile.Result{}, fmt.Errorf("failed to pace pod: %v", err)
 	}
 
+	unblockedPods := map[apitypes.NamespacedName]bool{}
 	// evict all the unblocked pods
 	for _, unblockedPod := range unblocked {
 		logger.V(1).Info("evicting pod to unblock it")
-		if err := evictPod(ctx, r.client, &unblockedPod); err != nil {
+		if err := evictPod(ctx, r.client, &unblockedPod); client.IgnoreNotFound(err) != nil {
 			logger.Error(err, "failed to evict pod", "pod", unblockedPod.Name, "namespace", unblockedPod.Namespace)
+		} else {
+			unblockedPods[client.ObjectKeyFromObject(&unblockedPod)] = true
 		}
 	}
 
-	return reconcile.Result{}, nil
+	if _, ok := unblockedPods[request.NamespacedName]; ok {
+		return reconcile.Result{}, nil
+	}
+
+	// if our pod wasn't unblocked then check for policies.
+	policyMaxDuration := group.GroupPolicies.MaxBlockedDuration
+	// apply max blocked policy.
+	if policyMaxDuration > 0 {
+		timeSinceCreation := time.Since(pod.CreationTimestamp.Time)
+		logger.V(1).Info("checking MaxBlockedDuration", "maxDuration", policyMaxDuration, "creationDuration", timeSinceCreation)
+		if timeSinceCreation > policyMaxDuration {
+			logger.Info("blocked pod exceeded policy duration", "maxDuration", policyMaxDuration)
+			if err := evictPod(ctx, r.client, pod); client.IgnoreNotFound(err) != nil {
+				logger.Error(err, "failed to evict pod", "pod", pod.Name, "namespace", pod.Namespace)
+			} else {
+				// success, return default
+				return reconcile.Result{}, nil
+			}
+		}
+	}
+
+	// if a max blocking time specified then we need to resync nased on that.
+	resync := r.blockedPodResyncDuration
+	if group.GroupPolicies.MaxBlockedDuration > 0 {
+		resync = time.Duration(math.Min(
+			float64(resync),
+			float64(group.GroupPolicies.MaxBlockedDuration/2.0)))
+	}
+	return reconcile.Result{
+		RequeueAfter: resync,
+	}, nil
+
 }
 
 func (r *Reconciler) checkEnabled(objectMeta *metav1.ObjectMeta, logger logr.Logger) bool {

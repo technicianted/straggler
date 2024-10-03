@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/go-logr/logr"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -30,6 +31,7 @@ type StaggeringPolicy struct {
 	LabelSelector       map[string]string
 	BypassLabelSelector map[string]string
 	GroupingExpression  string
+	MaxBlockedDuration  metav1.Duration
 	Pacer               Pacer
 }
 

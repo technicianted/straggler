@@ -4,6 +4,7 @@ package types
 
 import (
 	"context"
+	"time"
 
 	configtypes "straggler/pkg/config/types"
 	pacertypes "straggler/pkg/pacer/types"
@@ -28,6 +29,12 @@ type ObjectRecorderFactory interface {
 	RecorderForRootController(ctx context.Context, object runtime.Object, logger logr.Logger) (ObjectRecorder, error)
 }
 
+// Policies applied to a staggering group, which may be compoised
+// of multiple staggering policies configs.
+type StaggeringGroupPolicies struct {
+	MaxBlockedDuration time.Duration
+}
+
 // Pod classification result.
 type PodClassification struct {
 	// Unique ID to identify this particular pacer instance. It
@@ -35,6 +42,10 @@ type PodClassification struct {
 	ID string
 	// Pacer used for staggering this pod.
 	Pacer pacertypes.Pacer
+	// GroupPolicies are a set of policies to be applied to this
+	// staggering group based on the underlying one or more
+	// matched policies.
+	GroupPolicies StaggeringGroupPolicies
 }
 
 // Classify a pod to a staggering pacer.

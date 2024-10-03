@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"straggler/pkg/controller/mocks"
 	"straggler/pkg/controller/types"
@@ -116,6 +117,7 @@ func TestReconcile_PodClassificationFailure(t *testing.T) {
 			Labels: map[string]string{
 				DefaultEnableLabel:         "1",
 				DefaultStaggerGroupIDLabel: "groupid",
+				DefaultStaggeredPodLabel:   "1",
 			},
 		},
 		Spec: corev1.PodSpec{},
@@ -165,6 +167,7 @@ func TestReconcile_PodNotInAnyGroup(t *testing.T) {
 			Labels: map[string]string{
 				DefaultEnableLabel:         "1",
 				DefaultStaggerGroupIDLabel: "groupid",
+				DefaultStaggeredPodLabel:   "1",
 			},
 		},
 		Spec: corev1.PodSpec{},
@@ -216,6 +219,7 @@ func TestReconcile_SuccessfulReconciliation(t *testing.T) {
 			Labels: map[string]string{
 				DefaultEnableLabel:         "1",
 				DefaultStaggerGroupIDLabel: "groupid",
+				DefaultStaggeredPodLabel:   "1",
 			},
 		},
 		Spec: corev1.PodSpec{},
@@ -304,5 +308,114 @@ func TestReconcile_SuccessfulReconciliation(t *testing.T) {
 	res, err := reconciler.Reconcile(ctx, req)
 
 	assert.NoError(t, err)
+	// should be requeued after default
+	assert.Equal(t, reconcile.Result{RequeueAfter: DefaultBlockedPodResyncDuration}, res)
+}
+
+func TestReconcile_MaxBlockedDuration(t *testing.T) {
+	reconciler, mockClient, mockClassifier, mockGroupClassifier, ctrl := setupTest(t)
+	defer ctrl.Finish()
+
+	mockPacer := pacermockes.NewMockPacer(ctrl)
+
+	req := reconcile.Request{
+		NamespacedName: client.ObjectKey{
+			Namespace: "default",
+			Name:      "blocked-pod",
+		},
+	}
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "default",
+			Name:      "blocked-pod",
+			Labels: map[string]string{
+				DefaultEnableLabel:         "1",
+				DefaultStaggerGroupIDLabel: "groupid",
+				DefaultStaggeredPodLabel:   "1",
+			},
+			CreationTimestamp: metav1.NewTime(time.Now().Add(-100 * time.Millisecond)),
+		},
+		Spec: corev1.PodSpec{},
+	}
+
+	group := &types.PodClassification{
+		ID:    "groupid",
+		Pacer: mockPacer,
+		GroupPolicies: types.StaggeringGroupPolicies{
+			MaxBlockedDuration: 100 * time.Millisecond,
+		},
+	}
+
+	readyPods := []corev1.Pod{
+		{ObjectMeta: metav1.ObjectMeta{Name: "ready-pod"}},
+	}
+	startingPods := []corev1.Pod{
+		{ObjectMeta: metav1.ObjectMeta{Name: "starting-pod"}},
+	}
+	blockedPods := []corev1.Pod{
+		*pod,
+	}
+
+	// Set expectation: Get returns the Pod
+	mockClient.
+		EXPECT().
+		Get(
+			gomock.Any(),       // ctx
+			req.NamespacedName, // key
+			gomock.Any(),       // obj
+			gomock.Any(),       // opts (variadic)
+		).
+		DoAndReturn(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+			*obj.(*corev1.Pod) = *pod
+			return nil
+		})
+
+	// Set expectation: Classify returns the group
+	mockClassifier.
+		EXPECT().
+		ClassifyByGroupID("groupid", gomock.Any()).
+		Return(group, nil)
+
+	// Set expectation: ClassifyPodGroup
+	mockGroupClassifier.
+		EXPECT().
+		ClassifyPodGroup(gomock.Any(), "groupid", gomock.Any()).
+		Return(readyPods, startingPods, blockedPods, nil)
+
+	// Set expectation: Pacer.Pace
+	mockPacer.
+		EXPECT().
+		Pace(pacertypes.PodClassification{
+			Ready:    readyPods,
+			Starting: startingPods,
+			Blocked:  blockedPods,
+		}, gomock.Any()).
+		Return(nil, nil)
+
+	mockSubresourceClient := mocks.NewMockSubResourceClient(ctrl)
+	mockClient.EXPECT().SubResource("eviction").Return(mockSubresourceClient)
+	// Expect Create to be called for eviction
+	mockSubresourceClient.
+		EXPECT().
+		Create(
+			gomock.Any(), // ctx
+			gomock.Any(), // obj
+			gomock.Any(), // subresource
+			gomock.Any(), // opts (variadic)
+		).
+		DoAndReturn(func(_ context.Context, obj client.Object, _ client.Object, _ ...client.CreateOption) error {
+			pod, ok := obj.(*corev1.Pod)
+			assert.True(t, ok)
+			assert.Equal(t, "blocked-pod", pod.Name)
+			assert.Equal(t, "default", pod.Namespace)
+			return nil
+		})
+
+	ctx := context.TODO()
+	res, err := reconciler.Reconcile(ctx, req)
+
+	assert.NoError(t, err)
+	// should not be requeued
 	assert.Equal(t, reconcile.Result{}, res)
 }

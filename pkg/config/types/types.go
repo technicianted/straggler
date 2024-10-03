@@ -2,7 +2,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 package types
 
-import pacertypes "straggler/pkg/pacer/types"
+import (
+	"time"
+
+	pacertypes "straggler/pkg/pacer/types"
+)
 
 type StaggerGroup struct {
 	// group name. must be unique.
@@ -13,6 +17,8 @@ type StaggerGroup struct {
 	BypassLabelSelector map[string]string
 	// jsonpath aggregation grouping expression.
 	GroupingExpression string
+	// Maximum time to keep a pod in blocked state. Default none.
+	MaxBlockedDuration time.Duration
 
 	PacerFactory pacertypes.PacerFactory
 }
