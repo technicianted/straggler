@@ -116,7 +116,6 @@ func (f *flightTracker) WaitOne(ctx context.Context, key string, object metav1.O
 		return nil
 	}
 
-	fmt.Printf("list: %v\n", flights)
 	logger.V(1).Info("awaiting a flight to land", "inflight", len)
 	select {
 	case <-waitChan:
@@ -236,7 +235,6 @@ func (f *flightTracker) startEvicter(logger logr.Logger) {
 					if time.Since(flight.timestamp) > f.maxFlightDuration {
 						logger.Info("force landing flight", "flight", flight.object, "key", key)
 						go func() {
-							fmt.Printf("list: %v\n", flightList)
 							logger.Info("writing flight chan", "flight", flight.object, "key", key)
 							flightList.landedChan <- nil
 							logger.Info("done writing flight chan", "flight", flight.object, "key", key)
