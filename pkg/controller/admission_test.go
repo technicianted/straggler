@@ -197,8 +197,7 @@ func TestAdmissionPodFlight(t *testing.T) {
 	blocker := blockermocks.NewMockPodBlocker(mockCtrl)
 	flightTracker := mocks.NewMockAdmissionFlightTracker(mockCtrl)
 	flightChan := make(chan struct{})
-	flightTracker.EXPECT().Track(gomock.Any(), pod.ObjectMeta, gomock.Any()).Return(nil)
-	flightTracker.EXPECT().WaitOne(gomock.Any(), gomock.Any(), gomock.All()).DoAndReturn(
+	flightTracker.EXPECT().WaitOne(gomock.Any(), gomock.Any(), gomock.Any(), gomock.All()).DoAndReturn(
 		func(_ context.Context, _ string, _ logr.Logger) error {
 			<-flightChan
 			return nil

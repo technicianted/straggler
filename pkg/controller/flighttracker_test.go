@@ -47,14 +47,16 @@ func TestFlightTrackerSimple(t *testing.T) {
 			return nil
 		})
 	tracker := NewFlightTracker(mockClient, time.Second, keyLabel, logger)
-
-	err := tracker.Track(groupingKey, podMeta, logger)
-	require.NoError(t, err)
-
-	// this should timeout since flight hasn't landed
+	// this should timeout since there are no previous flights
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
-	err = tracker.WaitOne(ctx, groupingKey, logger)
+	err := tracker.WaitOne(ctx, groupingKey, podMeta, logger)
+	require.NoError(t, err)
+
+	// timeout since flight hasn't landed
+	ctx, cancel = context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	err = tracker.WaitOne(ctx, groupingKey, podMeta, logger)
 	require.Error(t, err)
 	require.Equal(t, context.DeadlineExceeded, err)
 
@@ -69,7 +71,7 @@ func TestFlightTrackerSimple(t *testing.T) {
 	// this should not timeout
 	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
-	err = tracker.WaitOne(ctx, groupingKey, logger)
+	err = tracker.WaitOne(ctx, groupingKey, podMeta, logger)
 	require.NoError(t, err)
 }
 
@@ -92,13 +94,16 @@ func TestFlightTrackerAutoLanding(t *testing.T) {
 	mockClient := mocks.NewMockClient(mockCtrl)
 	tracker := NewFlightTracker(mockClient, 200*time.Millisecond, keyLabel, logger)
 
-	err := tracker.Track(groupingKey, podMeta, logger)
-	require.NoError(t, err)
-
-	// this should timeout since flight hasn't landed
+	// no timeout since it is first flight
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
-	err = tracker.WaitOne(ctx, groupingKey, logger)
+	err := tracker.WaitOne(ctx, groupingKey, podMeta, logger)
+	require.NoError(t, err)
+
+	// timeout since flight hasn't landed
+	ctx, cancel = context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	err = tracker.WaitOne(ctx, groupingKey, podMeta, logger)
 	require.Error(t, err)
 	require.Equal(t, context.DeadlineExceeded, err)
 
@@ -108,7 +113,7 @@ func TestFlightTrackerAutoLanding(t *testing.T) {
 	// this should not timeout because of autolanding
 	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
-	err = tracker.WaitOne(ctx, groupingKey, logger)
+	err = tracker.WaitOne(ctx, groupingKey, podMeta, logger)
 	require.NoError(t, err)
 }
 
@@ -136,41 +141,35 @@ func TestFlightTrackerSeenPods(t *testing.T) {
 			keyLabel: groupingKey,
 		},
 	}
-	//pod2 := corev1.Pod{
-	//	ObjectMeta: pod2Meta,
-	//}
 
 	mockClient := mocks.NewMockClient(mockCtrl)
-	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-		func(_ context.Context, object apitypes.NamespacedName, obj client.Object, _ ...client.GetOption) error {
-			require.EqualValues(t, object.Name, pod1.Name)
-			newPod := obj.(*corev1.Pod)
-			pod1.DeepCopyInto(newPod)
-			return nil
-		})
+
 	tracker := NewFlightTracker(mockClient, time.Second, keyLabel, logger)
 
-	err := tracker.Track(groupingKey, pod1Meta, logger)
+	// this should not timeout since it's the first one
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	err := tracker.WaitOne(ctx, groupingKey, pod1Meta, logger)
 	require.NoError(t, err)
 
-	// land
-	pod1.Name = pod1.GenerateName + "1"
+	// land pod1
+	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, object apitypes.NamespacedName, obj client.Object, _ ...client.GetOption) error {
+			require.EqualValues(t, object.Name, pod1.Name)
+			newPod := obj.(*corev1.Pod)
+			pod1.DeepCopyInto(newPod)
+			return nil
+		})
 	_, err = tracker.Reconcile(
 		context.Background(),
 		reconcile.Request{
 			NamespacedName: client.ObjectKeyFromObject(&pod1),
 		})
 	require.NoError(t, err)
-
-	// this should not timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
-	err = tracker.WaitOne(ctx, groupingKey, logger)
+	// track pod2. should not timeout
+	err = tracker.WaitOne(ctx, groupingKey, pod2Meta, logger)
 	require.NoError(t, err)
-
-	err = tracker.Track(groupingKey, pod2Meta, logger)
-	require.NoError(t, err)
-	// reconcile pod1 again, should be a noop
+	// land pod1 again, should be a noop
 	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
 		func(_ context.Context, object apitypes.NamespacedName, obj client.Object, _ ...client.GetOption) error {
 			require.EqualValues(t, object.Name, pod1.Name)
@@ -185,10 +184,16 @@ func TestFlightTrackerSeenPods(t *testing.T) {
 		})
 	require.NoError(t, err)
 
-	// should timeout since pod2 hasn't landed
+	// start pod1 again but do not land it, should not timeout
+	// since there are no in-flight pods.
 	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
-	err = tracker.WaitOne(ctx, groupingKey, logger)
+	err = tracker.WaitOne(ctx, groupingKey, pod1Meta, logger)
+	require.NoError(t, err)
+	// should timeout since pod1 hasn't landed
+	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	err = tracker.WaitOne(ctx, groupingKey, pod2Meta, logger)
 	require.Error(t, err)
 	require.Equal(t, context.DeadlineExceeded, err)
 }

@@ -48,7 +48,7 @@ type flightTracker struct {
 // unavoidable but we try to minimize them.
 // Implementation uses client to fetch and check committed objects. For safety,
 // pods that exceed maxFlightDuration and automatically assumed committed.
-// objectKeyLabel should match the same label that the admision controller
+// objectKeyLabel should match the same label that the admission controller
 // uses to set the grouping key.
 //
 // TODO: This is overly complex.
@@ -70,22 +70,15 @@ func NewFlightTracker(
 	return tracker
 }
 
-// Track a pod until it get recinciled in the API server. This includes pods that
-// don't yet have a Name but only GenerateName.
-func (f *flightTracker) Track(key string, object metav1.ObjectMeta, logger logr.Logger) error {
-	f.Lock()
-	defer f.Unlock()
+// Waits for one flight to land with key or ctx timeout.
+func (f *flightTracker) WaitOne(ctx context.Context, key string, object metav1.ObjectMeta, logger logr.Logger) error {
+	logger = logger.WithValues("key", key)
 
-	name := object.Name
-	if len(name) == 0 {
-		name = object.GenerateName
-	}
-	if len(name) == 0 {
-		return fmt.Errorf("unable to get a unique name for object")
-	}
+	f.Lock()
 
 	flights, ok := f.flightsByKey[key]
 	if !ok {
+		logger.V(1).Info("creating new entry")
 		flights = &flightList{
 			flights:                  list.New(),
 			landedChan:               make(chan interface{}),
@@ -94,6 +87,14 @@ func (f *flightTracker) Track(key string, object metav1.ObjectMeta, logger logr.
 		f.flightsByKey[key] = flights
 	}
 
+	name := object.Name
+	if len(name) == 0 {
+		name = object.GenerateName
+	}
+	if len(name) == 0 {
+		f.Unlock()
+		return fmt.Errorf("unable to get a unique name for object")
+	}
 	flightName := apitypes.NamespacedName{
 		Name:      name,
 		Namespace: object.Namespace,
@@ -103,25 +104,19 @@ func (f *flightTracker) Track(key string, object metav1.ObjectMeta, logger logr.
 		timestamp: time.Now(),
 	})
 
-	logger.Info("tracking new flight", "flight", flightName, "key", key)
+	logger.V(1).Info("tracking new flight", "flight", flightName)
 
-	return nil
-}
+	waitChan := flights.landedChan
 
-// Waits for one flight to land with key or ctx timeout.
-func (f *flightTracker) WaitOne(ctx context.Context, key string, logger logr.Logger) error {
-	f.Lock()
-
-	flights, ok := f.flightsByKey[key]
-	if !ok {
-		logger.V(1).Info("flight key entry does not exist", "key", key)
-		f.Unlock()
+	len := flights.flights.Len()
+	f.Unlock()
+	if len == 1 {
+		// no previous flight, return immediately
+		logger.V(1).Info("no previous flight, returning immediately")
 		return nil
 	}
-	waitChan := flights.landedChan
-	f.Unlock()
 
-	logger.V(10).Info("awaiting a flight to land", "key", key)
+	logger.V(1).Info("awaiting a flight to land", "inflight", len)
 	select {
 	case <-waitChan:
 		return nil
@@ -205,7 +200,7 @@ func (f *flightTracker) Reconcile(ctx context.Context, request reconcile.Request
 			flightList.landedChan <- nil
 		}()
 	} else {
-		logger.V(10).Info("no matched flight found")
+		logger.V(1).Info("no matched flight found")
 	}
 
 	return reconcile.Result{}, nil
@@ -238,9 +233,11 @@ func (f *flightTracker) startEvicter(logger logr.Logger) {
 				for el != nil {
 					flight := el.Value.(*flight)
 					if time.Since(flight.timestamp) > f.maxFlightDuration {
-						logger.Info("force landing flight", "flight", flight.object)
+						logger.Info("force landing flight", "flight", flight.object, "key", key)
 						go func() {
+							logger.Info("writing flight chan", "flight", flight.object, "key", key)
 							flightList.landedChan <- nil
+							logger.Info("done writing flight chan", "flight", flight.object, "key", key)
 						}()
 						next := el.Prev()
 						flightList.flights.Remove(el)

@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
@@ -70,59 +69,8 @@ func Run(cmd *exec.Cmd) (string, error) {
 	return string(output), nil
 }
 
-// InstallVolcano installs the cert manager bundle.
-func InstallVolcano() error {
-	url := "https://raw.githubusercontent.com/volcano-sh/volcano/master/installer/volcano-development.yaml"
-	cmd := exec.Command("kubectl", "apply", "-f", url)
-	if _, err := Run(cmd); err != nil {
-		return err
-	}
-	// Wait for volcano to be ready, which can take time if volcano
-	//was re-installed after uninstalling on a cluster.
-	cmd = exec.Command("kubectl", "rollout", "status",
-		"deployment.apps/volcano-admission",
-		"--namespace", "volcano-system",
-		"--timeout", "5m",
-	)
-	_, err := Run(cmd)
-	if err != nil {
-		return err
-	}
-	cmd = exec.Command("kubectl", "wait",
-		"pods",
-		"--for=condition=Ready",
-		"-l", "app=volcano-admission",
-		"--namespace", "volcano-system")
-	_, err = Run(cmd)
-	if err != nil {
-		return err
-	}
-	// wait for admission service to be fully ready
-	time.Sleep(10 * time.Second)
-
-	cmd = exec.Command("kubectl", "rollout", "status",
-		"deployment.apps/volcano-controllers",
-		"--namespace", "volcano-system",
-		"--timeout", "5m",
-	)
-	_, err = Run(cmd)
-	if err != nil {
-		return err
-	}
-	cmd = exec.Command("kubectl", "rollout", "status",
-		"deployment.apps/volcano-scheduler",
-		"--namespace", "volcano-system",
-		"--timeout", "5m",
-	)
-	_, err = Run(cmd)
-	return err
-}
-
 var _ = BeforeSuite(func() {
 	By("bootstrapping test environment")
-
-	Expect(InstallVolcano()).NotTo(HaveOccurred())
-	logger.Info("deployed volcano")
 
 	testEnv = &envtest.Environment{
 		WebhookInstallOptions: envtest.WebhookInstallOptions{
