@@ -18,6 +18,7 @@ import (
 	"go.uber.org/mock/gomock"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -198,7 +199,7 @@ func TestAdmissionPodFlight(t *testing.T) {
 	flightTracker := mocks.NewMockAdmissionFlightTracker(mockCtrl)
 	flightChan := make(chan struct{})
 	flightTracker.EXPECT().WaitOne(gomock.Any(), gomock.Any(), gomock.Any(), gomock.All()).DoAndReturn(
-		func(_ context.Context, _ string, _ logr.Logger) error {
+		func(_ context.Context, _ string, _ metav1.ObjectMeta, _ logr.Logger) error {
 			<-flightChan
 			return nil
 		})

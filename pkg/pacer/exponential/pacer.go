@@ -66,27 +66,35 @@ func (p *pacer) ID() string {
 }
 
 func calculateAllowedCount(readyCount, startingCount, blockedCount, minInitial int, multiplier float64) int {
-	// Find the next exponential bucket after the ready count
-	exponent := 0
-	nextTarget := int(float64(minInitial) * math.Pow(multiplier, float64(exponent)))
-
-	for nextTarget <= readyCount {
-		exponent++
-		nextTarget = int(float64(minInitial) * math.Pow(multiplier, float64(exponent)))
+	// If there are no ready pods, we should admit the minimum initial count
+	if readyCount == 0 {
+		return min(max(0, minInitial-startingCount), blockedCount)
 	}
 
-	// Compute the remaining capacity in the bucket after considering starting pods
+	// Calculate the desired count based on the ready count
+	desiredCount := int(math.Ceil(float64(readyCount) * multiplier))
+
 	totalAdmitted := readyCount + startingCount
-	allowedCount := nextTarget - totalAdmitted
 
-	if allowedCount < 0 {
-		allowedCount = 0
-	}
+	// Now lets remove the admitted pods from the desired count to get the allowed count
+	allowedCount := max(0, desiredCount-totalAdmitted)
 
-	// Cap allowedCount to blockedCount
-	if allowedCount > blockedCount {
-		allowedCount = blockedCount
-	}
+	// We should not admit more than the number of blocked pods
+	allowedCount = min(allowedCount, blockedCount)
 
 	return allowedCount
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

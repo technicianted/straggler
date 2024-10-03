@@ -93,7 +93,7 @@ func TestPace(t *testing.T) {
 			minInitial:      1,
 			multiplier:      2.0,
 			maxStagger:      16,
-			expectedAllowed: 0,
+			expectedAllowed: 0, // No pods to admit
 		},
 		{
 			name:            "No ready pods, some blocked pods",
@@ -103,7 +103,7 @@ func TestPace(t *testing.T) {
 			minInitial:      1,
 			multiplier:      2.0,
 			maxStagger:      16,
-			expectedAllowed: 1,
+			expectedAllowed: 1, // Admit minInitial pods
 		},
 		{
 			name:            "Some ready pods, no starting pods, some blocked pods",
@@ -113,7 +113,7 @@ func TestPace(t *testing.T) {
 			minInitial:      1,
 			multiplier:      2.0,
 			maxStagger:      16,
-			expectedAllowed: 1,
+			expectedAllowed: 3, // desiredCount=6, allowed=3
 		},
 		{
 			name:            "Ready and starting pods, minInitial 2, multiplier 1.5",
@@ -123,27 +123,17 @@ func TestPace(t *testing.T) {
 			minInitial:      2,
 			multiplier:      1.5,
 			maxStagger:      16,
-			expectedAllowed: 0,
-		},
-		{
-			name:            "Allowed count becomes negative",
-			readyCount:      5,
-			startingCount:   2,
-			blockedCount:    3,
-			minInitial:      2,
-			multiplier:      2.0,
-			maxStagger:      16,
-			expectedAllowed: 1,
+			expectedAllowed: 0, // desiredCount=6, totalAdmitted=6, allowed=0
 		},
 		{
 			name:            "Allowed count exceeds blocked pods",
 			readyCount:      2,
-			startingCount:   1,
+			startingCount:   0,
 			blockedCount:    1,
 			minInitial:      1,
 			multiplier:      2.0,
 			maxStagger:      16,
-			expectedAllowed: 1,
+			expectedAllowed: 1, // desiredCount=4, totalAdmitted=2, allowed=1
 		},
 		{
 			name:            "Large blockedCount with minInitial 5",
@@ -153,7 +143,7 @@ func TestPace(t *testing.T) {
 			minInitial:      5,
 			multiplier:      2.0,
 			maxStagger:      16,
-			expectedAllowed: 5,
+			expectedAllowed: 5, // Admit minInitial pods
 		},
 		{
 			name:            "Large numbers for ready, starting, blocked counts",
@@ -163,25 +153,35 @@ func TestPace(t *testing.T) {
 			minInitial:      10,
 			multiplier:      2.0,
 			maxStagger:      256,
-			expectedAllowed: 10,
+			expectedAllowed: 30, // desiredCount=100, totalAdmitted=70, allowed=30
 		},
 		{
 			name:            "MaxStagger reached",
 			readyCount:      16,
 			startingCount:   3,
-			blockedCount:    7,
+			blockedCount:    17,
 			minInitial:      1,
 			multiplier:      2.0,
 			maxStagger:      16,
-			expectedAllowed: 7,
+			expectedAllowed: 17, // MaxStagger reached, admit all blocked pods
 		},
 		{
-			name:            "Ready and starting exceeds exponential bucket",
+			name:            "Ready and starting exceeds desired count",
 			readyCount:      3,
 			startingCount:   3,
 			blockedCount:    1,
 			minInitial:      1,
 			multiplier:      2.0,
+			maxStagger:      16,
+			expectedAllowed: 0, // desiredCount=6, totalAdmitted=6, allowed=0
+		},
+		{
+			name:            "Starting pods exceed minInitial",
+			readyCount:      0,
+			startingCount:   5,
+			blockedCount:    10,
+			minInitial:      3,
+			multiplier:      1.5,
 			maxStagger:      16,
 			expectedAllowed: 0,
 		},
