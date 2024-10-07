@@ -102,6 +102,7 @@ func NewGroupClassifier(policies []StaggeringPolicy, logger logr.Logger) (contro
 			LabelSelector:       policy.LabelSelector,
 			BypassLabelSelector: policy.BypassLabelSelector,
 			GroupingExpression:  policy.GroupingExpression,
+			MaxBlockedDuration:  policy.MaxBlockedDuration.Duration,
 			PacerFactory:        pacerFactory,
 		}, logger)
 		if err != nil {

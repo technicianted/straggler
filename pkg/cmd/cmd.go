@@ -81,7 +81,7 @@ func NewCMDWithManager(mgr manager.Manager, options Options, logger logr.Logger)
 func NewCMD(options Options, logger logr.Logger) (*CMD, error) {
 	kubernetesConfig, err := CreateKubernetesConfig(options.KubernetesOptions)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create kubernets config: %v", err)
+		return nil, fmt.Errorf("failed to create kubernetes config: %v", err)
 	}
 	options.Config = kubernetesConfig
 

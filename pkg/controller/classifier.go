@@ -184,8 +184,9 @@ func (c *podClassifier) Classify(podMeta metav1.ObjectMeta, podSpec corev1.PodSp
 
 	if group != nil {
 		return &types.PodClassification{
-			ID:    group.id,
-			Pacer: group.compositePacer,
+			ID:            group.id,
+			Pacer:         group.compositePacer,
+			GroupPolicies: c.calculateAggregateGroupPolicy(configs),
 		}, nil
 	}
 
@@ -245,4 +246,17 @@ func (c *podClassifier) calculateGroupID(pacers []pacertypes.Pacer, matchedConfi
 	hash := md5.New()
 	hash.Write([]byte(id))
 	return hex.EncodeToString(hash.Sum(nil))
+}
+
+func (c *podClassifier) calculateAggregateGroupPolicy(matchedConfigs []configEntry) (policies types.StaggeringGroupPolicies) {
+	for _, config := range matchedConfigs {
+		// find the minimum configured max blocked duration
+		if config.MaxBlockedDuration > 0 &&
+			(policies.MaxBlockedDuration == 0 ||
+				config.MaxBlockedDuration < policies.MaxBlockedDuration) {
+			policies.MaxBlockedDuration = config.MaxBlockedDuration
+		}
+	}
+
+	return
 }

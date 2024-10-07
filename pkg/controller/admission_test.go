@@ -19,7 +19,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestAdmissionEnableLabel(t *testing.T) {
@@ -44,7 +43,7 @@ func TestAdmissionPodAdmissionBlocking(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	pod := corev1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{
 				DefaultEnableLabel: "1",
 			},
@@ -77,7 +76,7 @@ func TestAdmissionPodAdmissionBlocking(t *testing.T) {
 
 	// allow pod. we expect the group label but not blocking
 	pod = corev1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{
 				DefaultEnableLabel: "1",
 			},
@@ -96,7 +95,7 @@ func TestAdmissionPodAdmissionBlocking(t *testing.T) {
 
 	// test classifier returning nil group
 	pod = corev1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{
 				DefaultEnableLabel: "1",
 			},
@@ -114,7 +113,7 @@ func TestAdmissionPodErrorBypass(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	pod := corev1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{
 				DefaultEnableLabel: "1",
 			},
@@ -150,7 +149,7 @@ func TestAdmissionJobSimple(t *testing.T) {
 	job := batchv1.Job{
 		Spec: batchv1.JobSpec{
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						DefaultEnableLabel: "1",
 					},
@@ -178,7 +177,7 @@ func TestAdmissionPodFlight(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	pod := corev1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{
 				DefaultEnableLabel: "1",
 			},
