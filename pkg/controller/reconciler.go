@@ -76,7 +76,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		pod.Labels = make(map[string]string)
 	}
 	if _, ok := pod.Labels[DefaultStaggeredPodLabel]; !ok {
-		logger.V(1).Info("pod does is not staggered")
+		logger.V(1).Info("pod is not staggered")
 		return reconcile.Result{}, nil
 	}
 	groupID, ok := pod.Labels[r.staggerGroupIDLabel]

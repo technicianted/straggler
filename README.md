@@ -36,7 +36,7 @@ staggeringPolicies:
   labelSelector:
     staggerimages: "1"
   # maximum time to keep a pod staggered after which 
-  # it will be automaticallys started.
+  # it will be automatically started.
   # defaults to inifnite.
   maxBlockedDuration: 10m
   # stagger pods in groups by evaluating this jsonpath.
