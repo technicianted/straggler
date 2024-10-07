@@ -74,10 +74,8 @@ func calculateAllowedCount(readyCount, startingCount, blockedCount, minInitial i
 	// Calculate the desired count based on the ready count
 	desiredCount := int(math.Ceil(float64(readyCount) * multiplier))
 
-	totalAdmitted := readyCount + startingCount
-
-	// Now lets remove the admitted pods from the desired count to get the allowed count
-	allowedCount := max(0, desiredCount-totalAdmitted)
+	// Now lets remove the starting pods from the desired count to get the allowed count
+	allowedCount := max(0, desiredCount-startingCount)
 
 	// We should not admit more than the number of blocked pods
 	allowedCount = min(allowedCount, blockedCount)
