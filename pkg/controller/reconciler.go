@@ -75,9 +75,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	if pod.Labels == nil {
 		pod.Labels = make(map[string]string)
 	}
+	// try to skip unnecessary reconciliations
+	// if a pod is blocked then we reconcile.
 	if _, ok := pod.Labels[DefaultStaggeredPodLabel]; !ok {
 		logger.V(1).Info("pod is not staggered")
-		return reconcile.Result{}, nil
+		// if a pod is not ready then we are not interested in this event.
+		// only ready pods will have an effect on pacing.
+		if !isPodReady(*pod) {
+			logger.V(1).Info("pod is not ready")
+			return reconcile.Result{}, nil
+		}
 	}
 	groupID, ok := pod.Labels[r.staggerGroupIDLabel]
 	if !ok {
